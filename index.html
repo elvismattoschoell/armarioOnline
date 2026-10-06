@@ -38,12 +38,6 @@
             </button>
           </li>
           <li class="nav-item">
-            <button data-view="board">
-              <i data-lucide="grid" class="icon"></i>
-              <span>Board Visual</span>
-            </button>
-          </li>
-          <li class="nav-item">
             <button data-view="collections">
               <i data-lucide="folder-heart" class="icon"></i>
               <span>Coleções</span>
@@ -95,6 +89,32 @@
                 Criar Coleção
               </button>
             </div>
+
+            <div class="card">
+              <h4 class="card-title">Criar Combinação</h4>
+              <p class="card-desc">Combine suas peças no Board Visual para montar e salvar novos outfits.</p>
+              <button class="btn btn-secondary" id="btn-quick-create-outfit">
+                <i data-lucide="sparkles" class="icon"></i>
+                Montar Look
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Fluxo de Criar / Editar Combinação (Board View) - Oculto por padrão -->
+        <section id="board-view" class="view-section" style="display: none;">
+          <div class="flow-header">
+            <div>
+              <h3>Montar Combinação de Roupas</h3>
+              <p class="flow-subtitle">Organize e ajuste suas peças no Board Visual.</p>
+            </div>
+            <button class="btn btn-secondary" id="btn-close-board">
+              <i data-lucide="arrow-left" class="icon"></i>
+              Voltar
+            </button>
+          </div>
+          <div class="board-canvas-area">
+            <p>Área de montagem da combinação (Board Visual).</p>
           </div>
         </section>
       </main>

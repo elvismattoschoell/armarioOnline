@@ -212,15 +212,96 @@ body {
   margin-bottom: 16px;
 }
 
-/* Responsive Constraint for Desktop/Tablet Focus */
+/* Header de Fluxos (Ex: Board View) */
+.flow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.flow-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.board-canvas-area {
+  border: 1px dashed var(--border-dark);
+  border-radius: 8px;
+  min-height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background-color: var(--bg-surface);
+}
+
+/* Responsividade Mobile (< 768px) */
 @media (max-width: 767px) {
-  body::before {
-    content: "O Armário Virtual foi otimizado para navegação em Desktop e Tablet (largura mínima de 768px).";
-    display: block;
-    padding: 12px;
-    background-color: #000;
-    color: #fff;
-    font-size: 0.75rem;
-    text-align: center;
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 16px;
+  }
+
+  .brand-container {
+    padding: 0 0 12px 0;
+  }
+
+  .nav-menu {
+    flex-direction: row;
+    overflow-x: auto;
+    margin-top: 12px;
+    padding-bottom: 4px;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-item {
+    flex-shrink: 0;
+  }
+
+  .nav-item button {
+    padding: 8px 12px;
+    white-space: nowrap;
+  }
+
+  .top-header {
+    padding: 0 16px;
+    height: 56px;
+  }
+
+  .header-title {
+    font-size: 1.1rem;
+  }
+
+  .content-container {
+    padding: 16px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .btn {
+    width: 100%;
+    min-height: 44px; /* Otimizado para alvos de toque mobile */
+  }
+
+  .flow-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
