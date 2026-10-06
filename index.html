@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Armário Virtual | Gestão de Guarda-Roupa</title>
+
+  <!-- CSS Principal -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Supabase JS Client via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Lucide Icons via CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Navegação Lateral -->
+    <aside class="sidebar">
+      <div class="brand-container">
+        <i data-lucide="archive" class="icon"></i>
+        <h1 class="brand-title">Armário Virtual</h1>
+      </div>
+
+      <nav>
+        <ul class="nav-menu">
+          <li class="nav-item">
+            <button class="active" data-view="dashboard">
+              <i data-lucide="layout-dashboard" class="icon"></i>
+              <span>Painel</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button data-view="wardrobe">
+              <i data-lucide="shirt" class="icon"></i>
+              <span>Guarda-Roupa</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button data-view="board">
+              <i data-lucide="grid" class="icon"></i>
+              <span>Board Visual</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button data-view="collections">
+              <i data-lucide="folder-heart" class="icon"></i>
+              <span>Coleções</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button data-view="wishlist">
+              <i data-lucide="shopping-bag" class="icon"></i>
+              <span>Wishlist</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- Área Principal -->
+    <div class="main-wrapper">
+      <header class="top-header">
+        <h2 id="page-title" class="header-title">Painel Geral</h2>
+        <div class="user-profile">
+          <span id="user-greeting">Carregando...</span>
+          <i data-lucide="user" class="icon"></i>
+        </div>
+      </header>
+
+      <main id="main-content" class="content-container">
+        <!-- Conteúdo Renderizado Dinamicamente -->
+        <section id="dashboard-view">
+          <div class="welcome-banner">
+            <h3>Bem-vindo ao seu Armário Virtual</h3>
+            <p>Gerencie suas peças, monte looks interativos e planeje suas próximas aquisições.</p>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="card">
+              <h4 class="card-title">Gestão de Peças</h4>
+              <p class="card-desc">Adicione novas peças do seu guarda-roupa via foto ou upload de arquivo.</p>
+              <button class="btn btn-primary" id="btn-quick-add-item">
+                <i data-lucide="plus" class="icon"></i>
+                Adicionar Peça
+              </button>
+            </div>
+
+            <div class="card">
+              <h4 class="card-title">Coleções Temáticas</h4>
+              <p class="card-desc">Organize seus outfits por eventos, estações do ano ou ocasiões de trabalho.</p>
+              <button class="btn btn-secondary" id="btn-quick-create-collection">
+                <i data-lucide="folder-plus" class="icon"></i>
+                Criar Coleção
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Scripts Javascript -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
