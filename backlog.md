@@ -16,9 +16,10 @@
 - [x] Criar `app.js` inicializador do sistema e navegação base
 
 ### 2. Módulo de Autenticação & Onboarding (RF01)
-- [ ] Implementar tela de Login / Cadastro via Supabase Auth
-- [ ] Implementar fluxo de autenticação e persistência de sessão
-- [ ] Criar Dashboard Principal com saudação personalizada e ações rápidas ([Adicionar Peça], [Criar Coleção])
+- [x] Implementar tela de Login / Cadastro via Supabase Auth
+- [x] Implementar fluxo de autenticação e persistência de sessão (com salvamento de username nos metadados)
+- [x] Criar Dashboard Principal com saudação personalizada ("Bem-vindo, [Nome de Usuário]") e ações rápidas ([Adicionar Peça], [Criar Coleção])
+- [x] Implementar verificação de perfil Administrador e Painel Admin com métricas agregadas sem imagens
 
 ### 3. Módulo de Gestão de Peças e Estoque (RF02)
 - [ ] Criar formulário e modal de cadastro de peças (Upload de arquivo e integração Câmera)
@@ -47,3 +48,4 @@
 
 ## Histórico de Atualizações
 - **2025-05-18:** Projeto iniciado, `backlog.md` criado e arquitetura sequencial mapeada.
+- **2025-05-18:** Implementado fluxo completo de autenticação (Login/Cadastro com Supabase Auth), navegação para o guarda-roupa, saudação personalizada e Painel de Administrador com métricas agregadas.
