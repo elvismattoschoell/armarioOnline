@@ -617,79 +617,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Remoção de Fundo (Ajustado para preservar peças claras e amostragem de bordas)
+  // Remoção de Fundo via IA / Segmentação de Imagem (@imgly/background-removal)
   if (btnRemoveBg) {
-    btnRemoveBg.addEventListener('click', () => {
+    btnRemoveBg.addEventListener('click', async () => {
       if (!pieceImagePreview || !pieceImagePreview.src) return;
 
       closeCanvasEditor();
+      clearPieceModalMessage();
 
-      const img = new Image();
-      img.crossOrigin = 'Anonymous';
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+      const originalBtnText = btnRemoveBg.querySelector('span')
+        ? btnRemoveBg.querySelector('span').textContent
+        : t('btn_remove_bg');
 
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
+      btnRemoveBg.disabled = true;
+      if (btnRemoveBg.querySelector('span')) {
+        btnRemoveBg.querySelector('span').textContent = t('btn_removing_bg');
+      }
 
-        // Amostragem das bordas para identificar a cor de fundo aproximada
-        const samplePoints = [
-          [0, 0],
-          [canvas.width - 1, 0],
-          [0, canvas.height - 1],
-          [canvas.width - 1, canvas.height - 1],
-          [Math.floor(canvas.width / 2), 0],
-          [0, Math.floor(canvas.height / 2)],
-          [canvas.width - 1, Math.floor(canvas.height / 2)],
-          [Math.floor(canvas.width / 2), canvas.height - 1]
-        ];
+      try {
+        const bgRemovalModule = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/+esm');
+        const removeBackground = bgRemovalModule.removeBackground;
 
-        let bgR = 0, bgG = 0, bgB = 0;
-        let samples = 0;
-        samplePoints.forEach(([x, y]) => {
-          const idx = (y * canvas.width + x) * 4;
-          bgR += data[idx];
-          bgG += data[idx + 1];
-          bgB += data[idx + 2];
-          samples++;
+        // Executa a remoção de fundo com modelo de IA (ONNX / WebAssembly)
+        const imageSource = pieceImagePreview.src;
+        const blob = await removeBackground(imageSource, {
+          output: {
+            format: 'image/png',
+            quality: 0.9
+          }
         });
-        bgR = Math.round(bgR / samples);
-        bgG = Math.round(bgG / samples);
-        bgB = Math.round(bgB / samples);
 
-        const tolerance = 45; // Tolerância de variação de cor
-
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-
-          // Distância euclidiana da cor em relação ao fundo
-          const dist = Math.sqrt(
-            Math.pow(r - bgR, 2) + Math.pow(g - bgG, 2) + Math.pow(b - bgB, 2)
-          );
-
-          if (dist < tolerance) {
-            data[i + 3] = 0; // Alpha -> transparente
-          }
+        if (blob) {
+          processedBlob = blob;
+          const newUrl = URL.createObjectURL(blob);
+          pieceImagePreview.src = newUrl;
+          showPieceModalMessage(t('bg_removed_success'), 'success');
         }
-
-        ctx.putImageData(imageData, 0, 0);
-
-        canvas.toBlob((blob) => {
-          if (blob) {
-            processedBlob = blob;
-            const newUrl = URL.createObjectURL(blob);
-            pieceImagePreview.src = newUrl;
-            showPieceModalMessage('Fundo removido com sucesso!', 'success');
-          }
-        }, 'image/png');
-      };
-      img.src = pieceImagePreview.src;
+      } catch (err) {
+        console.error('Erro na remoção de fundo por IA:', err);
+        showPieceModalMessage(t('bg_removal_error'), 'error');
+      } finally {
+        btnRemoveBg.disabled = false;
+        if (btnRemoveBg.querySelector('span')) {
+          btnRemoveBg.querySelector('span').textContent = originalBtnText;
+        }
+      }
     });
   }
 
