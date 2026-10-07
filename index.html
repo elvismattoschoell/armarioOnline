@@ -13,10 +13,6 @@
 
   <!-- Lucide Icons via CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- Cropper.js CSS and JS via CDN -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 </head>
 <body>
   <!-- Tela Dedicada de Autenticação -->
@@ -315,24 +311,60 @@
           <input type="file" id="piece-image" class="form-input" accept="image/*" capture="environment">
           <div id="image-preview-container" class="image-preview-container" style="display: none;">
             <img id="piece-image-preview" src="" alt="Prévia da peça" class="piece-image-preview">
+            <canvas id="crop-canvas-editor" class="crop-canvas-editor" style="display: none;"></canvas>
+
             <div id="image-processing-actions" class="image-processing-actions">
               <button type="button" id="btn-remove-bg" class="btn btn-secondary btn-sm" title="Remover Fundo da Imagem">
                 <i data-lucide="wand-2" class="icon"></i>
                 <span data-i18n="btn_remove_bg">Remover Fundo</span>
               </button>
+              <button type="button" id="btn-invert-selection" class="btn btn-secondary btn-sm" title="Inverter Seleção">
+                <i data-lucide="flip-horizontal-2" class="icon"></i>
+                <span data-i18n="btn_invert_selection">Inverter Seleção</span>
+              </button>
               <button type="button" id="btn-crop-image" class="btn btn-secondary btn-sm" title="Recortar Imagem">
-                <i data-lucide="crop" class="icon"></i>
-                <span data-i18n="btn_crop">Recortar</span>
+                <i data-lucide="pencil" class="icon"></i>
+                <span data-i18n="btn_crop">Recortar (Lápis/Laço)</span>
+              </button>
+              <button type="button" id="btn-undo-original" class="btn btn-secondary btn-sm" title="Desfazer / Foto Original">
+                <i data-lucide="rotate-ccw" class="icon"></i>
+                <span data-i18n="btn_undo_original">Foto Original</span>
               </button>
             </div>
-            <div id="crop-actions" class="crop-actions" style="display: none;">
-              <button type="button" id="btn-apply-crop" class="btn btn-primary btn-sm">
-                <i data-lucide="check" class="icon"></i>
-                <span data-i18n="btn_apply_crop">Aplicar Recorte</span>
-              </button>
-              <button type="button" id="btn-cancel-crop" class="btn btn-secondary btn-sm">
-                <span data-i18n="btn_cancel">Cancelar</span>
-              </button>
+
+            <!-- Controles do Editor de Recorte Livre (Lápis/Laço e Borracha) -->
+            <div id="crop-canvas-controls" class="crop-canvas-controls" style="display: none;">
+              <div class="canvas-tool-row">
+                <div class="tool-group">
+                  <button type="button" id="btn-tool-lasso" class="btn btn-secondary btn-sm tool-btn active-tool" title="Lápis / Laço">
+                    <i data-lucide="pencil" class="icon"></i>
+                    <span data-i18n="tool_lasso">Laço</span>
+                  </button>
+                  <button type="button" id="btn-tool-eraser" class="btn btn-secondary btn-sm tool-btn" title="Borracha">
+                    <i data-lucide="eraser" class="icon"></i>
+                    <span data-i18n="tool_eraser">Borracha</span>
+                  </button>
+                </div>
+                <div class="thickness-group">
+                  <label for="brush-size-slider" class="thickness-label" data-i18n="label_brush_size">Espessura:</label>
+                  <input type="range" id="brush-size-slider" min="2" max="40" value="4" class="brush-slider">
+                  <span id="brush-size-val" class="brush-size-val">4px</span>
+                </div>
+              </div>
+
+              <div class="crop-actions">
+                <button type="button" id="btn-clear-trace" class="btn btn-secondary btn-sm">
+                  <i data-lucide="trash-2" class="icon"></i>
+                  <span data-i18n="btn_clear_trace">Limpar Traço</span>
+                </button>
+                <button type="button" id="btn-confirm-crop" class="btn btn-primary btn-sm">
+                  <i data-lucide="check" class="icon"></i>
+                  <span data-i18n="btn_confirm_crop">Confirmar Recorte</span>
+                </button>
+                <button type="button" id="btn-cancel-crop" class="btn btn-secondary btn-sm">
+                  <span data-i18n="btn_cancel">Cancelar</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

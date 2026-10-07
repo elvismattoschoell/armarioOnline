@@ -556,37 +556,57 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Elementos do Processamento de Imagem
   const btnRemoveBg = document.getElementById('btn-remove-bg');
+  const btnInvertSelection = document.getElementById('btn-invert-selection');
   const btnCropImage = document.getElementById('btn-crop-image');
-  const btnApplyCrop = document.getElementById('btn-apply-crop');
-  const btnCancelCrop = document.getElementById('btn-cancel-crop');
+  const btnUndoOriginal = document.getElementById('btn-undo-original');
   const imageProcessingActions = document.getElementById('image-processing-actions');
-  const cropActions = document.getElementById('crop-actions');
 
-  let cropperInstance = null;
-  let processedBlob = null; // Guarda o blob processado (fundo removido ou recortado)
+  // Elementos do Editor de Recorte Livre (Lápis/Laço e Borracha)
+  const cropCanvasEditor = document.getElementById('crop-canvas-editor');
+  const cropCanvasControls = document.getElementById('crop-canvas-controls');
+  const btnToolLasso = document.getElementById('btn-tool-lasso');
+  const btnToolEraser = document.getElementById('btn-tool-eraser');
+  const brushSizeSlider = document.getElementById('brush-size-slider');
+  const brushSizeVal = document.getElementById('brush-size-val');
+  const btnClearTrace = document.getElementById('btn-clear-trace');
+  const btnConfirmCrop = document.getElementById('btn-confirm-crop');
+  const btnCancelCrop = document.getElementById('btn-cancel-crop');
 
-  const destroyCropper = () => {
-    if (cropperInstance) {
-      cropperInstance.destroy();
-      cropperInstance = null;
-    }
-    if (cropActions) cropActions.style.display = 'none';
+  let originalImageSrc = null; // Guarda a foto original sem processamento
+  let processedBlob = null; // Guarda o blob processado (.png com transparência)
+
+  // Estado do Editor de Canvas
+  let currentTool = 'lasso'; // 'lasso' | 'eraser'
+  let isDrawing = false;
+  let pathPoints = [];
+  let baseEditorImage = null;
+
+  const closeCanvasEditor = () => {
+    pathPoints = [];
+    isDrawing = false;
+    if (cropCanvasControls) cropCanvasControls.style.display = 'none';
+    if (cropCanvasEditor) cropCanvasEditor.style.display = 'none';
     if (imageProcessingActions) imageProcessingActions.style.display = 'flex';
+    if (pieceImagePreview) pieceImagePreview.style.display = 'block';
   };
 
   // Preview de Imagem selecionada no Modal
   if (pieceImageInput) {
     pieceImageInput.addEventListener('change', (e) => {
-      destroyCropper();
+      closeCanvasEditor();
       processedBlob = null;
+      originalImageSrc = null;
+
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
-          if (pieceImagePreview) pieceImagePreview.src = event.target.result;
+          originalImageSrc = event.target.result;
+          if (pieceImagePreview) pieceImagePreview.src = originalImageSrc;
           if (imagePreviewContainer) imagePreviewContainer.style.display = 'flex';
           if (imageProcessingActions) imageProcessingActions.style.display = 'flex';
-          if (cropActions) cropActions.style.display = 'none';
+          if (cropCanvasControls) cropCanvasControls.style.display = 'none';
+          if (cropCanvasEditor) cropCanvasEditor.style.display = 'none';
           refreshIcons();
         };
         reader.readAsDataURL(file);
@@ -597,12 +617,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Remoção de Fundo (Canvas Pixel Manipulation / Chromakey & Thresholding)
+  // Remoção de Fundo (Ajustado para preservar peças claras e amostragem de bordas)
   if (btnRemoveBg) {
     btnRemoveBg.addEventListener('click', () => {
       if (!pieceImagePreview || !pieceImagePreview.src) return;
 
-      destroyCropper();
+      closeCanvasEditor();
 
       const img = new Image();
       img.crossOrigin = 'Anonymous';
@@ -616,17 +636,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
 
-        // Amostragem dos cantos para identificar a cor de fundo aproximada
-        const cornerPixels = [
+        // Amostragem das bordas para identificar a cor de fundo aproximada
+        const samplePoints = [
           [0, 0],
           [canvas.width - 1, 0],
           [0, canvas.height - 1],
-          [canvas.width - 1, canvas.height - 1]
+          [canvas.width - 1, canvas.height - 1],
+          [Math.floor(canvas.width / 2), 0],
+          [0, Math.floor(canvas.height / 2)],
+          [canvas.width - 1, Math.floor(canvas.height / 2)],
+          [Math.floor(canvas.width / 2), canvas.height - 1]
         ];
 
-        let bgR = 255, bgG = 255, bgB = 255;
+        let bgR = 0, bgG = 0, bgB = 0;
         let samples = 0;
-        cornerPixels.forEach(([x, y]) => {
+        samplePoints.forEach(([x, y]) => {
           const idx = (y * canvas.width + x) * 4;
           bgR += data[idx];
           bgG += data[idx + 1];
@@ -637,23 +661,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         bgG = Math.round(bgG / samples);
         bgB = Math.round(bgB / samples);
 
-        const tolerance = 45; // Tolerância de variação de cor/luminância
+        const tolerance = 45; // Tolerância de variação de cor
 
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i];
           const g = data[i + 1];
           const b = data[i + 2];
 
-          // Distância euclidiana da cor do pixel em relação ao fundo
+          // Distância euclidiana da cor em relação ao fundo
           const dist = Math.sqrt(
             Math.pow(r - bgR, 2) + Math.pow(g - bgG, 2) + Math.pow(b - bgB, 2)
           );
 
-          // Se for uma cor clara próxima ao fundo ou muito brilhante (>240), torna transparente
-          const isHighLuminance = r > 235 && g > 235 && b > 235;
-
-          if (dist < tolerance || isHighLuminance) {
-            data[i + 3] = 0; // Canal alpha -> transparente
+          if (dist < tolerance) {
+            data[i + 3] = 0; // Alpha -> transparente
           }
         }
 
@@ -672,60 +693,308 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Recorte Manual com Cropper.js
+  // Inverter Seleção (Togglamento da Máscara de Transparência)
+  if (btnInvertSelection) {
+    btnInvertSelection.addEventListener('click', () => {
+      if (!pieceImagePreview || !pieceImagePreview.src || !originalImageSrc) {
+        showPieceModalMessage('Carregue uma imagem antes de inverter a seleção.', 'error');
+        return;
+      }
+
+      closeCanvasEditor();
+
+      const origImg = new Image();
+      origImg.crossOrigin = 'Anonymous';
+      origImg.onload = () => {
+        const currentImg = new Image();
+        currentImg.crossOrigin = 'Anonymous';
+        currentImg.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = origImg.width;
+          canvas.height = origImg.height;
+          const ctx = canvas.getContext('2d');
+
+          ctx.drawImage(currentImg, 0, 0, canvas.width, canvas.height);
+          const currentData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+          const origCanvas = document.createElement('canvas');
+          origCanvas.width = origImg.width;
+          origCanvas.height = origImg.height;
+          const origCtx = origCanvas.getContext('2d');
+          origCtx.drawImage(origImg, 0, 0);
+          const origData = origCtx.getImageData(0, 0, origCanvas.width, origCanvas.height);
+
+          const cPixels = currentData.data;
+          const oPixels = origData.data;
+
+          for (let i = 0; i < cPixels.length; i += 4) {
+            if (cPixels[i + 3] < 128) {
+              cPixels[i] = oPixels[i];
+              cPixels[i + 1] = oPixels[i + 1];
+              cPixels[i + 2] = oPixels[i + 2];
+              cPixels[i + 3] = 255;
+            } else {
+              cPixels[i + 3] = 0;
+            }
+          }
+
+          ctx.putImageData(currentData, 0, 0);
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              processedBlob = blob;
+              const newUrl = URL.createObjectURL(blob);
+              pieceImagePreview.src = newUrl;
+              showPieceModalMessage('Seleção invertida com sucesso!', 'success');
+            }
+          }, 'image/png');
+        };
+        currentImg.src = pieceImagePreview.src;
+      };
+      origImg.src = originalImageSrc;
+    });
+  }
+
+  // Desfazer / Restaurar Foto Original
+  if (btnUndoOriginal) {
+    btnUndoOriginal.addEventListener('click', () => {
+      if (originalImageSrc) {
+        closeCanvasEditor();
+        processedBlob = null;
+        pieceImagePreview.src = originalImageSrc;
+        showPieceModalMessage('Foto original restaurada com sucesso!', 'success');
+      } else {
+        showPieceModalMessage('Nenhuma foto original para restaurar.', 'error');
+      }
+    });
+  }
+
+  // --- Lógica da Ferramenta de Recorte Livre (Lápis / Laço e Borracha) ---
+
+  // Atualizar exibição de espessura
+  if (brushSizeSlider && brushSizeVal) {
+    brushSizeSlider.addEventListener('input', (e) => {
+      brushSizeVal.textContent = `${e.target.value}px`;
+    });
+  }
+
+  // Alternar Modos de Ferramenta
+  if (btnToolLasso) {
+    btnToolLasso.addEventListener('click', () => {
+      currentTool = 'lasso';
+      btnToolLasso.classList.add('active-tool');
+      if (btnToolEraser) btnToolEraser.classList.remove('active-tool');
+    });
+  }
+
+  if (btnToolEraser) {
+    btnToolEraser.addEventListener('click', () => {
+      currentTool = 'eraser';
+      if (btnToolEraser) btnToolEraser.classList.add('active-tool');
+      if (btnToolLasso) btnToolLasso.classList.remove('active-tool');
+    });
+  }
+
+  // Redesenhar a imagem base e a linha do laço no canvas
+  const redrawCanvasEditor = () => {
+    if (!cropCanvasEditor || !baseEditorImage) return;
+    const ctx = cropCanvasEditor.getContext('2d');
+    ctx.clearRect(0, 0, cropCanvasEditor.width, cropCanvasEditor.height);
+    ctx.drawImage(baseEditorImage, 0, 0);
+
+    if (pathPoints.length > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
+      for (let i = 1; i < pathPoints.length; i++) {
+        ctx.lineTo(pathPoints[i].x, pathPoints[i].y);
+      }
+
+      const lineThick = parseInt(brushSizeSlider ? brushSizeSlider.value : '4', 10);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = lineThick + 2;
+      ctx.stroke();
+
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = lineThick;
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+
+      if (pathPoints.length > 2) {
+        ctx.beginPath();
+        ctx.moveTo(pathPoints[pathPoints.length - 1].x, pathPoints[pathPoints.length - 1].y);
+        ctx.lineTo(pathPoints[0].x, pathPoints[0].y);
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+  };
+
+  // Obter coordenadas de clique/toque mapeadas para as dimensões internas do canvas
+  const getCanvasCoords = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  };
+
+  if (cropCanvasEditor) {
+    const startDraw = (e) => {
+      isDrawing = true;
+      const coords = getCanvasCoords(e, cropCanvasEditor);
+
+      if (currentTool === 'lasso') {
+        pathPoints = [coords];
+        redrawCanvasEditor();
+      } else if (currentTool === 'eraser') {
+        const ctx = cropCanvasEditor.getContext('2d');
+        const thick = parseInt(brushSizeSlider ? brushSizeSlider.value : '10', 10);
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(coords.x, coords.y, thick / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    };
+
+    const moveDraw = (e) => {
+      if (!isDrawing) return;
+      if (e.touches) e.preventDefault();
+      const coords = getCanvasCoords(e, cropCanvasEditor);
+
+      if (currentTool === 'lasso') {
+        pathPoints.push(coords);
+        redrawCanvasEditor();
+      } else if (currentTool === 'eraser') {
+        const ctx = cropCanvasEditor.getContext('2d');
+        const thick = parseInt(brushSizeSlider ? brushSizeSlider.value : '10', 10);
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(coords.x, coords.y, thick / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    };
+
+    const stopDraw = () => {
+      isDrawing = false;
+    };
+
+    cropCanvasEditor.addEventListener('mousedown', startDraw);
+    cropCanvasEditor.addEventListener('mousemove', moveDraw);
+    cropCanvasEditor.addEventListener('mouseup', stopDraw);
+    cropCanvasEditor.addEventListener('mouseleave', stopDraw);
+
+    cropCanvasEditor.addEventListener('touchstart', startDraw, { passive: false });
+    cropCanvasEditor.addEventListener('touchmove', moveDraw, { passive: false });
+    cropCanvasEditor.addEventListener('touchend', stopDraw);
+  }
+
+  // Abrir o Editor de Recorte Livre
   if (btnCropImage) {
     btnCropImage.addEventListener('click', () => {
       if (!pieceImagePreview || !pieceImagePreview.src) return;
 
-      if (window.Cropper) {
-        if (cropperInstance) cropperInstance.destroy();
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        baseEditorImage = img;
+        pathPoints = [];
+        isDrawing = false;
 
-        cropperInstance = new window.Cropper(pieceImagePreview, {
-          viewMode: 1,
-          autoCropArea: 0.8,
-          responsive: true,
-          restore: false
-        });
+        cropCanvasEditor.width = img.width;
+        cropCanvasEditor.height = img.height;
 
+        redrawCanvasEditor();
+
+        if (pieceImagePreview) pieceImagePreview.style.display = 'none';
         if (imageProcessingActions) imageProcessingActions.style.display = 'none';
-        if (cropActions) cropActions.style.display = 'flex';
+        if (cropCanvasEditor) cropCanvasEditor.style.display = 'block';
+        if (cropCanvasControls) cropCanvasControls.style.display = 'flex';
         refreshIcons();
-      } else {
-        showPieceModalMessage('Biblioteca de recorte indisponível.', 'error');
+      };
+      img.src = pieceImagePreview.src;
+    });
+  }
+
+  // Limpar Traço
+  if (btnClearTrace) {
+    btnClearTrace.addEventListener('click', () => {
+      pathPoints = [];
+      if (baseEditorImage && cropCanvasEditor) {
+        redrawCanvasEditor();
       }
     });
   }
 
-  if (btnApplyCrop) {
-    btnApplyCrop.addEventListener('click', () => {
-      if (cropperInstance) {
-        const croppedCanvas = cropperInstance.getCroppedCanvas();
-        if (croppedCanvas) {
-          croppedCanvas.toBlob((blob) => {
-            if (blob) {
-              processedBlob = blob;
-              const croppedUrl = URL.createObjectURL(blob);
-              destroyCropper();
-              pieceImagePreview.src = croppedUrl;
-              showPieceModalMessage('Recorte aplicado com sucesso!', 'success');
-            }
-          }, 'image/png');
+  // Confirmar Recorte Livre
+  if (btnConfirmCrop) {
+    btnConfirmCrop.addEventListener('click', () => {
+      if (!cropCanvasEditor || !baseEditorImage) return;
+
+      if (pathPoints.length > 2 && currentTool === 'lasso') {
+        const outCanvas = document.createElement('canvas');
+        outCanvas.width = baseEditorImage.width;
+        outCanvas.height = baseEditorImage.height;
+        const outCtx = outCanvas.getContext('2d');
+
+        outCtx.beginPath();
+        outCtx.moveTo(pathPoints[0].x, pathPoints[0].y);
+        for (let i = 1; i < pathPoints.length; i++) {
+          outCtx.lineTo(pathPoints[i].x, pathPoints[i].y);
         }
+        outCtx.closePath();
+        outCtx.clip();
+
+        outCtx.drawImage(baseEditorImage, 0, 0);
+
+        outCanvas.toBlob((blob) => {
+          if (blob) {
+            processedBlob = blob;
+            const croppedUrl = URL.createObjectURL(blob);
+            closeCanvasEditor();
+            pieceImagePreview.src = croppedUrl;
+            showPieceModalMessage('Recorte livre aplicado com sucesso!', 'success');
+          }
+        }, 'image/png');
+      } else {
+        cropCanvasEditor.toBlob((blob) => {
+          if (blob) {
+            processedBlob = blob;
+            const croppedUrl = URL.createObjectURL(blob);
+            closeCanvasEditor();
+            pieceImagePreview.src = croppedUrl;
+            showPieceModalMessage('Recorte aplicado com sucesso!', 'success');
+          }
+        }, 'image/png');
       }
     });
   }
 
+  // Cancelar Recorte
   if (btnCancelCrop) {
     btnCancelCrop.addEventListener('click', () => {
-      destroyCropper();
+      closeCanvasEditor();
     });
   }
 
   // Abrir e Fechar Modal de Cadastro de Peça
   const openAddPieceModal = () => {
     clearPieceModalMessage();
-    destroyCropper();
+    closeCanvasEditor();
     processedBlob = null;
+    originalImageSrc = null;
     if (addPieceForm) addPieceForm.reset();
     if (pieceImagePreview) pieceImagePreview.src = '';
     if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
@@ -733,8 +1002,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const closeAddPieceModal = () => {
-    destroyCropper();
+    closeCanvasEditor();
     processedBlob = null;
+    originalImageSrc = null;
     if (modalAddPiece) modalAddPiece.style.display = 'none';
     clearPieceModalMessage();
     if (addPieceForm) addPieceForm.reset();
