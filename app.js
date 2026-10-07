@@ -628,14 +628,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   const updateCategoriesDatalist = (existingCategories) => {
     if (!categoriesDatalist) return;
     const defaultCategories = [
-      'Camisetas',
-      'Camisas',
-      'Calças',
-      'Bermudas e Shorts',
-      'Casacos e Jaquetas',
-      'Vestidos e Saias',
-      'Calçados',
-      'Acessórios'
+      'Camiseta',
+      'Camisa',
+      'Casaco',
+      'Jaqueta',
+      'Moletom',
+      'Calça',
+      'Bermuda / Calções',
+      'Saia',
+      'Vestido',
+      'Calçado / Tênis',
+      'Acessório',
+      'Chapéu / Boné'
     ];
 
     const uniqueCategories = Array.from(
@@ -783,22 +787,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      if (!supabaseClient || !currentUser) {
+      if (!supabaseClient || !currentUser || !currentUser.id) {
         showPieceModalMessage(t('supabase_connection_error'));
         return;
       }
+
+      const userId = currentUser.id;
 
       btnSubmitPiece.disabled = true;
       btnSubmitPiece.querySelector('span').textContent = t('btn_saving_piece');
 
       let publicImageUrl = null;
 
-      // Upload de Imagem para o bucket 'roupas' no Supabase Storage
+      // Upload de Imagem para o bucket 'roupas' no Supabase Storage com user_id explícito na estrutura de diretório
       const imageFile = pieceImageInput.files[0];
       if (imageFile) {
         try {
           const fileExt = imageFile.name.split('.').pop();
-          const fileName = `${currentUser.id}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+          const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
 
           const { data: storageData, error: storageErr } = await supabaseClient
             .storage
@@ -834,11 +840,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
-      // Gravação dos Dados da Peça na tabela public.roupas
+      // Gravação dos Dados da Peça na tabela public.roupas com user_id do utilizador associado
       const { data: insertedPiece, error: insertErr } = await supabaseClient
         .from('roupas')
         .insert({
-          user_id: currentUser.id,
+          user_id: userId,
           nome: nome,
           categoria: categoria,
           cor: cor || null,
