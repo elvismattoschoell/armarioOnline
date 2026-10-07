@@ -141,17 +141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Checar se usuário é Admin
   const checkIsAdmin = (user) => {
     if (!user) return false;
-    const roleAppMeta = user.app_metadata?.role;
-    const roleUserMeta = user.user_metadata?.role;
-    const isAdminUserMeta = user.user_metadata?.is_admin;
-    const email = user.email || '';
-
-    return (
-      roleAppMeta === 'admin' ||
-      roleUserMeta === 'admin' ||
-      isAdminUserMeta === true ||
-      email.toLowerCase().includes('admin')
-    );
+    return user.user_metadata?.role === 'admin';
   };
 
   // Atualizar dados de exibição do usuário na área de Configurações
