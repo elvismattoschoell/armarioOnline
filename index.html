@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Armário Virtual | Gestão de Guarda-Roupa</title>
+  <title data-i18n="app_title">Armário Virtual | Gestão de Guarda-Roupa</title>
 
   <!-- CSS Principal -->
   <link rel="stylesheet" href="style.css">
@@ -20,8 +20,8 @@
     <div class="auth-card">
       <div class="auth-header">
         <i data-lucide="archive" class="auth-logo-icon"></i>
-        <h1 class="auth-title">Armário Virtual</h1>
-        <p class="auth-subtitle" id="auth-subtitle-text">Acesse sua conta corporativa</p>
+        <h1 class="auth-title" data-i18n="app_title">Armário Virtual</h1>
+        <p class="auth-subtitle" id="auth-subtitle-text" data-i18n="login_subtitle">Acesse sua conta corporativa</p>
       </div>
 
       <div id="auth-message" class="auth-message" style="display: none;"></div>
@@ -29,40 +29,40 @@
       <!-- Formulário de Login -->
       <form id="login-form" class="auth-form">
         <div class="form-group">
-          <label for="login-email">E-mail</label>
-          <input type="email" id="login-email" class="form-input" placeholder="seu.email@exemplo.com" required>
+          <label for="login-email" data-i18n="email_label">E-mail</label>
+          <input type="email" id="login-email" class="form-input" placeholder="seu.email@exemplo.com" data-i18n-placeholder="email_placeholder" required>
         </div>
         <div class="form-group">
-          <label for="login-password">Senha</label>
-          <input type="password" id="login-password" class="form-input" placeholder="••••••••" required>
+          <label for="login-password" data-i18n="password_label">Senha</label>
+          <input type="password" id="login-password" class="form-input" placeholder="••••••••" data-i18n-placeholder="password_placeholder" required>
         </div>
         <button type="submit" class="btn btn-primary btn-block" id="btn-login-submit">
-          <span>Entrar</span>
+          <span data-i18n="btn_login">Entrar</span>
         </button>
         <p class="auth-toggle-text">
-          Não possui uma conta? <a href="#" id="link-show-signup">Cadastre-se</a>
+          <span data-i18n="no_account">Não possui uma conta?</span> <a href="#" id="link-show-signup" data-i18n="link_signup">Cadastre-se</a>
         </p>
       </form>
 
       <!-- Formulário de Cadastro -->
       <form id="signup-form" class="auth-form" style="display: none;">
         <div class="form-group">
-          <label for="signup-username">Nome de Usuário</label>
-          <input type="text" id="signup-username" class="form-input" placeholder="Ex: MariaSilva" required>
+          <label for="signup-username" data-i18n="username_label">Nome de Usuário</label>
+          <input type="text" id="signup-username" class="form-input" placeholder="Ex: MariaSilva" data-i18n-placeholder="username_placeholder" required>
         </div>
         <div class="form-group">
-          <label for="signup-email">E-mail</label>
-          <input type="email" id="signup-email" class="form-input" placeholder="seu.email@exemplo.com" required>
+          <label for="signup-email" data-i18n="email_label">E-mail</label>
+          <input type="email" id="signup-email" class="form-input" placeholder="seu.email@exemplo.com" data-i18n-placeholder="email_placeholder" required>
         </div>
         <div class="form-group">
-          <label for="signup-password">Senha</label>
-          <input type="password" id="signup-password" class="form-input" placeholder="Mínimo 6 caracteres" required minlength="6">
+          <label for="signup-password" data-i18n="password_label">Senha</label>
+          <input type="password" id="signup-password" class="form-input" placeholder="Mínimo 6 caracteres" data-i18n-placeholder="signup_password_placeholder" required minlength="6">
         </div>
         <button type="submit" class="btn btn-primary btn-block" id="btn-signup-submit">
-          <span>Criar Conta</span>
+          <span data-i18n="btn_signup">Criar Conta</span>
         </button>
         <p class="auth-toggle-text">
-          Já possui uma conta? <a href="#" id="link-show-login">Faça Login</a>
+          <span data-i18n="have_account">Já possui uma conta?</span> <a href="#" id="link-show-login" data-i18n="link_login">Faça Login</a>
         </p>
       </form>
     </div>
@@ -74,7 +74,7 @@
     <aside class="sidebar">
       <div class="brand-container">
         <i data-lucide="archive" class="icon"></i>
-        <h1 class="brand-title">Armário Virtual</h1>
+        <h1 class="brand-title" data-i18n="app_title">Armário Virtual</h1>
       </div>
 
       <nav>
@@ -82,31 +82,37 @@
           <li class="nav-item">
             <button class="active" data-view="dashboard">
               <i data-lucide="layout-dashboard" class="icon"></i>
-              <span>Painel</span>
+              <span data-i18n="nav_dashboard">Painel</span>
             </button>
           </li>
           <li class="nav-item">
             <button data-view="wardrobe">
               <i data-lucide="shirt" class="icon"></i>
-              <span>Guarda-Roupa</span>
+              <span data-i18n="nav_wardrobe">Guarda-Roupa</span>
             </button>
           </li>
           <li class="nav-item">
             <button data-view="collections">
               <i data-lucide="folder-heart" class="icon"></i>
-              <span>Coleções</span>
+              <span data-i18n="nav_collections">Coleções</span>
             </button>
           </li>
           <li class="nav-item">
             <button data-view="wishlist">
               <i data-lucide="shopping-bag" class="icon"></i>
-              <span>Wishlist</span>
+              <span data-i18n="nav_wishlist">Wishlist</span>
             </button>
           </li>
           <li class="nav-item" id="nav-admin-item" style="display: none;">
             <button data-view="admin">
               <i data-lucide="shield-check" class="icon"></i>
-              <span>Painel Admin</span>
+              <span data-i18n="nav_admin">Painel Admin</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button data-view="settings">
+              <i data-lucide="settings" class="icon"></i>
+              <span data-i18n="nav_settings">Configurações</span>
             </button>
           </li>
         </ul>
@@ -116,10 +122,10 @@
     <!-- Área Principal -->
     <div class="main-wrapper">
       <header class="top-header">
-        <h2 id="page-title" class="header-title">Painel Geral</h2>
+        <h2 id="page-title" class="header-title" data-i18n="page_dashboard">Painel Geral</h2>
         <div class="user-profile">
           <span id="user-greeting">Carregando...</span>
-          <button id="btn-logout" class="btn-icon" title="Sair da Conta">
+          <button id="btn-logout" class="btn-icon" title="Sair da Conta" data-i18n-title="btn_logout_title">
             <i data-lucide="log-out" class="icon"></i>
           </button>
         </div>
@@ -129,35 +135,35 @@
         <!-- Conteúdo Renderizado Dinamicamente -->
         <section id="dashboard-view">
           <div class="welcome-banner">
-            <h3>Bem-vindo ao seu Armário Virtual</h3>
-            <p>Gerencie suas peças, monte looks interativos e planeje suas próximas aquisições.</p>
+            <h3 data-i18n="welcome_banner_title">Bem-vindo ao seu Armário Virtual</h3>
+            <p data-i18n="welcome_banner_desc">Gerencie suas peças, monte looks interativos e planeje suas próximas aquisições.</p>
           </div>
 
           <div class="dashboard-grid">
             <div class="card">
-              <h4 class="card-title">Gestão de Peças</h4>
-              <p class="card-desc">Adicione novas peças do seu guarda-roupa via foto ou upload de arquivo.</p>
+              <h4 class="card-title" data-i18n="card_items_title">Gestão de Peças</h4>
+              <p class="card-desc" data-i18n="card_items_desc">Adicione novas peças do seu guarda-roupa via foto ou upload de arquivo.</p>
               <button class="btn btn-primary" id="btn-quick-add-item">
                 <i data-lucide="plus" class="icon"></i>
-                Adicionar Peça
+                <span data-i18n="btn_add_item">Adicionar Peça</span>
               </button>
             </div>
 
             <div class="card">
-              <h4 class="card-title">Coleções Temáticas</h4>
-              <p class="card-desc">Organize seus outfits por eventos, estações do ano ou ocasiões de trabalho.</p>
+              <h4 class="card-title" data-i18n="card_collections_title">Coleções Temáticas</h4>
+              <p class="card-desc" data-i18n="card_collections_desc">Organize seus outfits por eventos, estações do ano ou ocasiões de trabalho.</p>
               <button class="btn btn-secondary" id="btn-quick-create-collection">
                 <i data-lucide="folder-plus" class="icon"></i>
-                Criar Coleção
+                <span data-i18n="btn_create_collection">Criar Coleção</span>
               </button>
             </div>
 
             <div class="card">
-              <h4 class="card-title">Criar Combinação</h4>
-              <p class="card-desc">Combine suas peças no Board Visual para montar e salvar novos outfits.</p>
+              <h4 class="card-title" data-i18n="card_outfits_title">Criar Combinação</h4>
+              <p class="card-desc" data-i18n="card_outfits_desc">Combine suas peças no Board Visual para montar e salvar novos outfits.</p>
               <button class="btn btn-secondary" id="btn-quick-create-outfit">
                 <i data-lucide="sparkles" class="icon"></i>
-                Montar Look
+                <span data-i18n="btn_create_outfit">Montar Look</span>
               </button>
             </div>
           </div>
@@ -167,47 +173,137 @@
         <section id="board-view" class="view-section" style="display: none;">
           <div class="flow-header">
             <div>
-              <h3>Montar Combinação de Roupas</h3>
-              <p class="flow-subtitle">Organize e ajuste suas peças no Board Visual.</p>
+              <h3 data-i18n="board_title">Montar Combinação de Roupas</h3>
+              <p class="flow-subtitle" data-i18n="board_subtitle">Organize e ajuste suas peças no Board Visual.</p>
             </div>
             <button class="btn btn-secondary" id="btn-close-board">
               <i data-lucide="arrow-left" class="icon"></i>
-              Voltar
+              <span data-i18n="btn_back">Voltar</span>
             </button>
           </div>
           <div class="board-canvas-area">
-            <p>Área de montagem da combinação (Board Visual).</p>
+            <p data-i18n="board_canvas_text">Área de montagem da combinação (Board Visual).</p>
           </div>
         </section>
 
         <!-- Painel de Administrador - Oculto por padrão -->
         <section id="admin-view" class="view-section" style="display: none;">
           <div class="welcome-banner">
-            <h3>Painel de Administração</h3>
-            <p>Visão geral e métricas agregadas da plataforma. Dados restritos sem exibição de fotos ou arquivos dos usuários.</p>
+            <h3 data-i18n="admin_banner_title">Painel de Administração</h3>
+            <p data-i18n="admin_banner_desc">Visão geral e métricas agregadas da plataforma. Dados restritos sem exibição de fotos ou arquivos dos usuários.</p>
           </div>
 
           <div class="dashboard-grid">
             <div class="card metric-card">
               <div class="metric-header">
                 <i data-lucide="users" class="icon metric-icon"></i>
-                <span class="metric-label">Contas Cadastradas</span>
+                <span class="metric-label" data-i18n="metric_users_label">Contas Cadastradas</span>
               </div>
               <div class="metric-value" id="metric-users-count">--</div>
-              <p class="card-desc">Total de usuários registrados no sistema.</p>
+              <p class="card-desc" data-i18n="metric_users_desc">Total de usuários registrados no sistema.</p>
             </div>
 
             <div class="card metric-card">
               <div class="metric-header">
                 <i data-lucide="shirt" class="icon metric-icon"></i>
-                <span class="metric-label">Itens Registrados</span>
+                <span class="metric-label" data-i18n="metric_items_label">Itens Registrados</span>
               </div>
               <div class="metric-value" id="metric-items-count">--</div>
-              <p class="card-desc">Total de peças cadastradas em todos os guarda-roupas.</p>
+              <p class="card-desc" data-i18n="metric_items_desc">Total de peças cadastradas em todos os guarda-roupas.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Seção de Configurações - Oculto por padrão -->
+        <section id="settings-view" class="view-section" style="display: none;">
+          <div class="dashboard-grid">
+            <!-- Card de Perfil -->
+            <div class="card settings-card">
+              <div class="settings-card-header">
+                <i data-lucide="user" class="icon card-icon"></i>
+                <h4 class="card-title" data-i18n="settings_profile_title">Perfil do Usuário</h4>
+              </div>
+              <p class="card-desc" data-i18n="settings_profile_desc">Informações da sua conta logada no sistema.</p>
+
+              <div class="settings-info-group">
+                <div class="info-item">
+                  <span class="info-label" data-i18n="settings_username">Nome de Usuário</span>
+                  <span class="info-value" id="settings-display-username">--</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label" data-i18n="settings_email">E-mail</span>
+                  <span class="info-value" id="settings-display-email">--</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card de Idioma da Interface -->
+            <div class="card settings-card">
+              <div class="settings-card-header">
+                <i data-lucide="globe" class="icon card-icon"></i>
+                <h4 class="card-title" data-i18n="settings_lang_title">Idioma da Interface</h4>
+              </div>
+              <p class="card-desc" data-i18n="settings_lang_desc">Selecione seu idioma de preferência para todo o site.</p>
+
+              <div class="form-group">
+                <select id="language-selector" class="form-input form-select">
+                  <option value="pt" data-i18n="lang_pt">Português (Brasil)</option>
+                  <option value="en" data-i18n="lang_en">English</option>
+                  <option value="ru" data-i18n="lang_ru">Русский</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Card de Segurança / Alterar Senha -->
+            <div class="card settings-card">
+              <div class="settings-card-header">
+                <i data-lucide="lock" class="icon card-icon"></i>
+                <h4 class="card-title" data-i18n="settings_password_title">Segurança e Senha</h4>
+              </div>
+              <p class="card-desc" data-i18n="settings_password_desc">Altere a sua senha de acesso à conta.</p>
+
+              <button class="btn btn-secondary" id="btn-open-change-password-modal">
+                <i data-lucide="key-round" class="icon"></i>
+                <span data-i18n="btn_change_password">Alterar Senha</span>
+              </button>
             </div>
           </div>
         </section>
       </main>
+    </div>
+  </div>
+
+  <!-- Modal para Alteração de Senha -->
+  <div id="modal-change-password" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" data-i18n="modal_change_password_title">Alterar Senha</h3>
+        <button id="btn-close-password-modal" class="btn-icon">
+          <i data-lucide="x" class="icon"></i>
+        </button>
+      </div>
+      <p class="modal-desc" data-i18n="modal_change_password_desc">Digite e confirme sua nova senha abaixo.</p>
+
+      <div id="password-modal-message" class="auth-message" style="display: none;"></div>
+
+      <form id="change-password-form" class="auth-form">
+        <div class="form-group">
+          <label for="new-password" data-i18n="new_password_label">Nova Senha</label>
+          <input type="password" id="new-password" class="form-input" placeholder="••••••••" data-i18n-placeholder="password_placeholder" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label for="confirm-password" data-i18n="confirm_password_label">Confirmar Nova Senha</label>
+          <input type="password" id="confirm-password" class="form-input" placeholder="••••••••" data-i18n-placeholder="password_placeholder" required minlength="6">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-password">
+            <span data-i18n="btn_cancel">Cancelar</span>
+          </button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-password">
+            <span data-i18n="btn_save_password">Salvar Nova Senha</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

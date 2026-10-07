@@ -1,4 +1,5 @@
 import { supabaseClient } from './supabase.js';
+import { getLanguage, setLanguage, t, translateSupabaseError, updateDOMTranslations } from './i18n.js';
 
 // Estado Global do Usuário Atual
 let currentUser = null;
@@ -12,6 +13,8 @@ const refreshIcons = () => {
 
 // Inicialização da Aplicação
 document.addEventListener('DOMContentLoaded', async () => {
+  // Configura idioma inicial no DOM
+  updateDOMTranslations();
   refreshIcons();
 
   // Elementos DOM de Autenticação e App
@@ -44,15 +47,47 @@ document.addEventListener('DOMContentLoaded', async () => {
   const dashboardView = document.getElementById('dashboard-view');
   const boardView = document.getElementById('board-view');
   const adminView = document.getElementById('admin-view');
-  const viewSections = [dashboardView, boardView, adminView];
+  const settingsView = document.getElementById('settings-view');
+  const viewSections = [dashboardView, boardView, adminView, settingsView];
 
   const btnCreateOutfit = document.getElementById('btn-quick-create-outfit');
   const btnCloseBoard = document.getElementById('btn-close-board');
   const pageTitle = document.getElementById('page-title');
 
+  // Elementos de Configurações
+  const settingsDisplayUsername = document.getElementById('settings-display-username');
+  const settingsDisplayEmail = document.getElementById('settings-display-email');
+  const languageSelector = document.getElementById('language-selector');
+
+  // Elementos do Modal de Alteração de Senha
+  const btnOpenChangePasswordModal = document.getElementById('btn-open-change-password-modal');
+  const modalChangePassword = document.getElementById('modal-change-password');
+  const btnClosePasswordModal = document.getElementById('btn-close-password-modal');
+  const btnCancelPassword = document.getElementById('btn-cancel-password');
+  const changePasswordForm = document.getElementById('change-password-form');
+  const newPasswordInput = document.getElementById('new-password');
+  const confirmPasswordInput = document.getElementById('confirm-password');
+  const passwordModalMessage = document.getElementById('password-modal-message');
+  const btnSubmitPassword = document.getElementById('btn-submit-password');
+
   // Métricas do Admin
   const metricUsersCount = document.getElementById('metric-users-count');
   const metricItemsCount = document.getElementById('metric-items-count');
+
+  // Configura seletor de idioma de acordo com a preferência atual
+  if (languageSelector) {
+    languageSelector.value = getLanguage();
+    languageSelector.addEventListener('change', (e) => {
+      const selectedLang = e.target.value;
+      if (setLanguage(selectedLang)) {
+        updateDOMTranslations();
+        if (currentUser) {
+          updateUserSettingsDisplay();
+        }
+        refreshIcons();
+      }
+    });
+  }
 
   // Função auxiliar para exibir mensagens no card de auth
   const showAuthMessage = (text, type = 'error') => {
@@ -68,6 +103,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     authMessage.style.display = 'none';
   };
 
+  // Função auxiliar para mensagens no modal de senha
+  const showPasswordModalMessage = (text, type = 'error') => {
+    if (!passwordModalMessage) return;
+    passwordModalMessage.textContent = text;
+    passwordModalMessage.className = `auth-message ${type}`;
+    passwordModalMessage.style.display = 'block';
+  };
+
+  const clearPasswordModalMessage = () => {
+    if (!passwordModalMessage) return;
+    passwordModalMessage.textContent = '';
+    passwordModalMessage.style.display = 'none';
+  };
+
   // Alternar entre formulários de Login e Cadastro
   if (linkShowSignup) {
     linkShowSignup.addEventListener('click', (e) => {
@@ -75,7 +124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearAuthMessage();
       loginForm.style.display = 'none';
       signupForm.style.display = 'flex';
-      if (authSubtitleText) authSubtitleText.textContent = 'Crie sua conta no Armário Virtual';
+      if (authSubtitleText) authSubtitleText.textContent = t('signup_subtitle');
     });
   }
 
@@ -85,7 +134,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearAuthMessage();
       signupForm.style.display = 'none';
       loginForm.style.display = 'flex';
-      if (authSubtitleText) authSubtitleText.textContent = 'Acesse sua conta corporativa';
+      if (authSubtitleText) authSubtitleText.textContent = t('login_subtitle');
     });
   }
 
@@ -105,18 +154,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     );
   };
 
+  // Atualizar dados de exibição do usuário na área de Configurações
+  const updateUserSettingsDisplay = () => {
+    if (!currentUser) return;
+
+    const username =
+      currentUser.user_metadata?.username ||
+      currentUser.user_metadata?.name ||
+      currentUser.email.split('@')[0];
+
+    if (userGreeting) {
+      userGreeting.textContent = t('welcome_greeting', { username });
+    }
+
+    if (settingsDisplayUsername) {
+      settingsDisplayUsername.textContent = username;
+    }
+
+    if (settingsDisplayEmail) {
+      settingsDisplayEmail.textContent = currentUser.email || '--';
+    }
+  };
+
   // Atualizar a interface conforme a sessão do usuário
   const updateUIForSession = async (session) => {
     if (session && session.user) {
       currentUser = session.user;
-      const username =
-        currentUser.user_metadata?.username ||
-        currentUser.user_metadata?.name ||
-        currentUser.email.split('@')[0];
-
-      if (userGreeting) {
-        userGreeting.textContent = `Bem-vindo, ${username}`;
-      }
+      updateUserSettingsDisplay();
 
       // Oculta tela de Auth e mostra App Layout
       if (authView) authView.style.display = 'none';
@@ -135,6 +199,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (appLayout) appLayout.style.display = 'none';
       if (authView) authView.style.display = 'flex';
     }
+    updateDOMTranslations();
     refreshIcons();
   };
 
@@ -146,17 +211,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (viewName === 'dashboard') {
       if (dashboardView) dashboardView.style.display = 'block';
-      if (pageTitle) pageTitle.textContent = 'Painel Geral';
+      if (pageTitle) {
+        pageTitle.setAttribute('data-i18n', 'page_dashboard');
+        pageTitle.textContent = t('page_dashboard');
+      }
     } else if (viewName === 'board') {
       if (boardView) boardView.style.display = 'block';
-      if (pageTitle) pageTitle.textContent = 'Montar Combinação';
+      if (pageTitle) {
+        pageTitle.setAttribute('data-i18n', 'page_board');
+        pageTitle.textContent = t('page_board');
+      }
     } else if (viewName === 'admin') {
       if (adminView) adminView.style.display = 'block';
-      if (pageTitle) pageTitle.textContent = 'Painel do Administrador';
+      if (pageTitle) {
+        pageTitle.setAttribute('data-i18n', 'page_admin');
+        pageTitle.textContent = t('page_admin');
+      }
       loadAdminMetrics();
+    } else if (viewName === 'settings') {
+      if (settingsView) settingsView.style.display = 'block';
+      if (pageTitle) {
+        pageTitle.setAttribute('data-i18n', 'page_settings');
+        pageTitle.textContent = t('page_settings');
+      }
+      updateUserSettingsDisplay();
     } else {
       if (dashboardView) dashboardView.style.display = 'block';
-      if (pageTitle) pageTitle.textContent = 'Painel Geral';
+      if (pageTitle) {
+        pageTitle.setAttribute('data-i18n', 'page_dashboard');
+        pageTitle.textContent = t('page_dashboard');
+      }
     }
 
     // Atualiza estado ativo dos botões da sidebar
@@ -168,6 +252,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
+    updateDOMTranslations();
     refreshIcons();
   };
 
@@ -179,7 +264,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (metricItemsCount) metricItemsCount.textContent = '...';
 
     try {
-      // Tentar buscar contagem de perfis / usuários
       let totalUsers = 0;
       const { count: profilesCount, error: profilesErr } = await supabaseClient
         .from('profiles')
@@ -188,11 +272,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!profilesErr && profilesCount !== null) {
         totalUsers = profilesCount;
       } else {
-        // Fallback para métrica do usuário ativo se profiles não existir
         totalUsers = 1;
       }
 
-      // Tentar buscar contagem de itens
       let totalItems = 0;
       const { count: itemsCount, error: itemsErr } = await supabaseClient
         .from('items')
@@ -215,7 +297,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Handlers do Supabase Auth ---
 
-  // 1. Cadastro (signUp)
+  // 1. Cadastro (signUp) - Com Redirecionamento Automático para Login
   if (signupForm) {
     signupForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -226,19 +308,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       const password = signupPasswordInput.value;
 
       if (!username || !email || !password) {
-        showAuthMessage('Por favor, preencha todos os campos.');
+        showAuthMessage(t('fill_all_fields'));
         return;
       }
 
       if (!supabaseClient) {
-        showAuthMessage('Erro na conexão com o Supabase.');
+        showAuthMessage(t('supabase_connection_error'));
         return;
       }
 
       btnSignupSubmit.disabled = true;
-      btnSignupSubmit.querySelector('span').textContent = 'Cadastrando...';
+      btnSignupSubmit.querySelector('span').textContent = t('btn_signing_up');
 
-      const { data, error } = await supabaseClient.auth.signUp({
+      const { error } = await supabaseClient.auth.signUp({
         email: email,
         password: password,
         options: {
@@ -249,17 +331,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
 
       btnSignupSubmit.disabled = false;
-      btnSignupSubmit.querySelector('span').textContent = 'Criar Conta';
+      btnSignupSubmit.querySelector('span').textContent = t('btn_signup');
 
       if (error) {
-        showAuthMessage(error.message || 'Erro ao realizar cadastro.');
+        showAuthMessage(translateSupabaseError(error));
       } else {
-        if (data.session) {
-          showAuthMessage('Cadastro realizado com sucesso!', 'success');
-          updateUIForSession(data.session);
-        } else {
-          showAuthMessage('Cadastro realizado! Se necessário, confirme o e-mail para acessar.', 'success');
-        }
+        // Limpa formulário de cadastro e redireciona para a tela de Login
+        signupForm.reset();
+        signupForm.style.display = 'none';
+        loginForm.style.display = 'flex';
+        if (authSubtitleText) authSubtitleText.textContent = t('login_subtitle');
+        showAuthMessage(t('signup_success_redirect'), 'success');
       }
     });
   }
@@ -274,17 +356,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       const password = loginPasswordInput.value;
 
       if (!email || !password) {
-        showAuthMessage('Por favor, preencha e-mail e senha.');
+        showAuthMessage(t('fill_all_fields'));
         return;
       }
 
       if (!supabaseClient) {
-        showAuthMessage('Erro na conexão com o Supabase.');
+        showAuthMessage(t('supabase_connection_error'));
         return;
       }
 
       btnLoginSubmit.disabled = true;
-      btnLoginSubmit.querySelector('span').textContent = 'Entrando...';
+      btnLoginSubmit.querySelector('span').textContent = t('btn_logging_in');
 
       const { data, error } = await supabaseClient.auth.signInWithPassword({
         email: email,
@@ -292,10 +374,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
 
       btnLoginSubmit.disabled = false;
-      btnLoginSubmit.querySelector('span').textContent = 'Entrar';
+      btnLoginSubmit.querySelector('span').textContent = t('btn_login');
 
       if (error) {
-        showAuthMessage(error.message || 'E-mail ou senha incorretos.');
+        showAuthMessage(translateSupabaseError(error));
       } else {
         clearAuthMessage();
         updateUIForSession(data.session);
@@ -313,6 +395,78 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // --- Handlers do Modal de Alteração de Senha ---
+  if (btnOpenChangePasswordModal) {
+    btnOpenChangePasswordModal.addEventListener('click', () => {
+      clearPasswordModalMessage();
+      if (changePasswordForm) changePasswordForm.reset();
+      if (modalChangePassword) modalChangePassword.style.display = 'flex';
+    });
+  }
+
+  const closeModalPassword = () => {
+    if (modalChangePassword) modalChangePassword.style.display = 'none';
+    clearPasswordModalMessage();
+    if (changePasswordForm) changePasswordForm.reset();
+  };
+
+  if (btnClosePasswordModal) {
+    btnClosePasswordModal.addEventListener('click', closeModalPassword);
+  }
+
+  if (btnCancelPassword) {
+    btnCancelPassword.addEventListener('click', closeModalPassword);
+  }
+
+  if (changePasswordForm) {
+    changePasswordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearPasswordModalMessage();
+
+      const newPassword = newPasswordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+
+      if (!newPassword || !confirmPassword) {
+        showPasswordModalMessage(t('fill_all_fields'));
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        showPasswordModalMessage(t('password_min_length'));
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        showPasswordModalMessage(t('password_mismatch_error'));
+        return;
+      }
+
+      if (!supabaseClient) {
+        showPasswordModalMessage(t('supabase_connection_error'));
+        return;
+      }
+
+      btnSubmitPassword.disabled = true;
+      btnSubmitPassword.querySelector('span').textContent = t('btn_saving_password');
+
+      const { error } = await supabaseClient.auth.updateUser({
+        password: newPassword
+      });
+
+      btnSubmitPassword.disabled = false;
+      btnSubmitPassword.querySelector('span').textContent = t('btn_save_password');
+
+      if (error) {
+        showPasswordModalMessage(translateSupabaseError(error));
+      } else {
+        showPasswordModalMessage(t('password_change_success'), 'success');
+        setTimeout(() => {
+          closeModalPassword();
+        }, 1500);
+      }
+    });
+  }
+
   // Verificação Inicial da Sessão e Ouvinte de Mudança de Estado de Auth
   if (supabaseClient) {
     const { data: { session } } = await supabaseClient.auth.getSession();
@@ -322,7 +476,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateUIForSession(session);
     });
   } else {
-    showAuthMessage('Erro: Supabase não está configurado.');
+    showAuthMessage(t('supabase_connection_error'));
   }
 
   // Navegação do Menu
