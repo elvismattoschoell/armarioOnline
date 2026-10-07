@@ -552,17 +552,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // --- Lógica e Operações do Guarda-Roupa ---
+  // --- Lógica e Operações do Guarda-Roupa e Processamento Visual de Imagens ---
+
+  // Elementos do Processamento de Imagem
+  const btnRemoveBg = document.getElementById('btn-remove-bg');
+  const btnCropImage = document.getElementById('btn-crop-image');
+  const btnApplyCrop = document.getElementById('btn-apply-crop');
+  const btnCancelCrop = document.getElementById('btn-cancel-crop');
+  const imageProcessingActions = document.getElementById('image-processing-actions');
+  const cropActions = document.getElementById('crop-actions');
+
+  let cropperInstance = null;
+  let processedBlob = null; // Guarda o blob processado (fundo removido ou recortado)
+
+  const destroyCropper = () => {
+    if (cropperInstance) {
+      cropperInstance.destroy();
+      cropperInstance = null;
+    }
+    if (cropActions) cropActions.style.display = 'none';
+    if (imageProcessingActions) imageProcessingActions.style.display = 'flex';
+  };
 
   // Preview de Imagem selecionada no Modal
   if (pieceImageInput) {
     pieceImageInput.addEventListener('change', (e) => {
+      destroyCropper();
+      processedBlob = null;
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
           if (pieceImagePreview) pieceImagePreview.src = event.target.result;
           if (imagePreviewContainer) imagePreviewContainer.style.display = 'flex';
+          if (imageProcessingActions) imageProcessingActions.style.display = 'flex';
+          if (cropActions) cropActions.style.display = 'none';
+          refreshIcons();
         };
         reader.readAsDataURL(file);
       } else {
@@ -572,9 +597,135 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Remoção de Fundo (Canvas Pixel Manipulation / Chromakey & Thresholding)
+  if (btnRemoveBg) {
+    btnRemoveBg.addEventListener('click', () => {
+      if (!pieceImagePreview || !pieceImagePreview.src) return;
+
+      destroyCropper();
+
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // Amostragem dos cantos para identificar a cor de fundo aproximada
+        const cornerPixels = [
+          [0, 0],
+          [canvas.width - 1, 0],
+          [0, canvas.height - 1],
+          [canvas.width - 1, canvas.height - 1]
+        ];
+
+        let bgR = 255, bgG = 255, bgB = 255;
+        let samples = 0;
+        cornerPixels.forEach(([x, y]) => {
+          const idx = (y * canvas.width + x) * 4;
+          bgR += data[idx];
+          bgG += data[idx + 1];
+          bgB += data[idx + 2];
+          samples++;
+        });
+        bgR = Math.round(bgR / samples);
+        bgG = Math.round(bgG / samples);
+        bgB = Math.round(bgB / samples);
+
+        const tolerance = 45; // Tolerância de variação de cor/luminância
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          // Distância euclidiana da cor do pixel em relação ao fundo
+          const dist = Math.sqrt(
+            Math.pow(r - bgR, 2) + Math.pow(g - bgG, 2) + Math.pow(b - bgB, 2)
+          );
+
+          // Se for uma cor clara próxima ao fundo ou muito brilhante (>240), torna transparente
+          const isHighLuminance = r > 235 && g > 235 && b > 235;
+
+          if (dist < tolerance || isHighLuminance) {
+            data[i + 3] = 0; // Canal alpha -> transparente
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            processedBlob = blob;
+            const newUrl = URL.createObjectURL(blob);
+            pieceImagePreview.src = newUrl;
+            showPieceModalMessage('Fundo removido com sucesso!', 'success');
+          }
+        }, 'image/png');
+      };
+      img.src = pieceImagePreview.src;
+    });
+  }
+
+  // Recorte Manual com Cropper.js
+  if (btnCropImage) {
+    btnCropImage.addEventListener('click', () => {
+      if (!pieceImagePreview || !pieceImagePreview.src) return;
+
+      if (window.Cropper) {
+        if (cropperInstance) cropperInstance.destroy();
+
+        cropperInstance = new window.Cropper(pieceImagePreview, {
+          viewMode: 1,
+          autoCropArea: 0.8,
+          responsive: true,
+          restore: false
+        });
+
+        if (imageProcessingActions) imageProcessingActions.style.display = 'none';
+        if (cropActions) cropActions.style.display = 'flex';
+        refreshIcons();
+      } else {
+        showPieceModalMessage('Biblioteca de recorte indisponível.', 'error');
+      }
+    });
+  }
+
+  if (btnApplyCrop) {
+    btnApplyCrop.addEventListener('click', () => {
+      if (cropperInstance) {
+        const croppedCanvas = cropperInstance.getCroppedCanvas();
+        if (croppedCanvas) {
+          croppedCanvas.toBlob((blob) => {
+            if (blob) {
+              processedBlob = blob;
+              const croppedUrl = URL.createObjectURL(blob);
+              destroyCropper();
+              pieceImagePreview.src = croppedUrl;
+              showPieceModalMessage('Recorte aplicado com sucesso!', 'success');
+            }
+          }, 'image/png');
+        }
+      }
+    });
+  }
+
+  if (btnCancelCrop) {
+    btnCancelCrop.addEventListener('click', () => {
+      destroyCropper();
+    });
+  }
+
   // Abrir e Fechar Modal de Cadastro de Peça
   const openAddPieceModal = () => {
     clearPieceModalMessage();
+    destroyCropper();
+    processedBlob = null;
     if (addPieceForm) addPieceForm.reset();
     if (pieceImagePreview) pieceImagePreview.src = '';
     if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
@@ -582,6 +733,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const closeAddPieceModal = () => {
+    destroyCropper();
+    processedBlob = null;
     if (modalAddPiece) modalAddPiece.style.display = 'none';
     clearPieceModalMessage();
     if (addPieceForm) addPieceForm.reset();
@@ -801,15 +954,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Upload de Imagem para o bucket 'roupas' no Supabase Storage com user_id explícito na estrutura de diretório
       const imageFile = pieceImageInput.files[0];
-      if (imageFile) {
+      if (processedBlob || imageFile) {
         try {
-          const fileExt = imageFile.name.split('.').pop();
+          const fileToUpload = processedBlob || imageFile;
+          const fileExt = processedBlob ? 'png' : (imageFile ? imageFile.name.split('.').pop() : 'png');
           const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
 
           const { data: storageData, error: storageErr } = await supabaseClient
             .storage
             .from('roupas')
-            .upload(fileName, imageFile, {
+            .upload(fileName, fileToUpload, {
               cacheControl: '3600',
               upsert: false
             });
