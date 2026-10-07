@@ -668,11 +668,79 @@ body {
 .image-processing-actions,
 .crop-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
   margin-top: 4px;
+}
+
+.crop-canvas-editor {
+  max-width: 100%;
+  max-height: 280px;
+  border: 1px dashed var(--border-dark);
+  border-radius: 6px;
+  cursor: crosshair;
+  touch-action: none;
+  background-color: var(--bg-surface);
+  object-fit: contain;
+}
+
+.crop-canvas-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+.canvas-tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.thickness-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.thickness-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.brush-slider {
+  width: 90px;
+  cursor: pointer;
+  accent-color: var(--primary-color);
+}
+
+.brush-size-val {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 28px;
+}
+
+.tool-btn.active-tool {
+  background-color: var(--primary-color);
+  color: var(--primary-text);
+  border-color: var(--primary-color);
 }
 
 .btn-sm {
