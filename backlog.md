@@ -22,12 +22,12 @@
 - [x] Implementar verificação de perfil Administrador e Painel Admin com métricas agregadas sem imagens
 
 ### 3. Módulo de Gestão de Peças e Estoque (RF02)
-- [ ] Criar formulário e modal de cadastro de peças (Upload de arquivo e integração Câmera)
+- [x] Criar formulário e modal de cadastro de peças (Upload de arquivo e integração Câmera)
 - [ ] Implementar modal de tutorial de fotografia (com "Pular" e "Não mostrar novamente")
 - [ ] Integrar processamento assíncrono para remoção de fundo
-- [ ] Implementar cadastro de atributos da peça (Categoria, Cor, Estação, Formalidade)
+- [x] Implementar cadastro de atributos da peça (Categoria, Cor, Estação, Formalidade, Marca, Tamanho)
 - [ ] Gerenciamento de status da peça (`Ativo`, `Vou me desfazer`, `Arquivado`)
-- [ ] Galeria e listagem de peças com filtros por atributos e status
+- [x] Galeria e listagem de peças divididas e agrupadas por Categoria com contadores
 
 ### 4. Módulo Board Visual - Lookbook Interativo (RF03)
 - [ ] Implementar área interativa de canvas/board visual (*drag-and-drop*, redimensionar, girar e ordem de camadas *z-index*)
@@ -50,3 +50,4 @@
 - **2025-05-18:** Projeto iniciado, `backlog.md` criado e arquitetura sequencial mapeada.
 - **2025-05-18:** Implementado fluxo completo de autenticação (Login/Cadastro com Supabase Auth), navegação para o guarda-roupa, saudação personalizada e Painel de Administrador com métricas agregadas.
 - **2025-05-18:** Atualizada a lógica de Admin para checar estritamente `user.user_metadata?.role === 'admin'`. Criado o script `schema.sql` idempotente com a tabela `roupas`, `DROP POLICY IF EXISTS` e políticas de RLS ajustadas.
+- **2025-05-18:** Implementado Módulo de Cadastro e Upload de Roupas com captura nativa `<input capture="environment">`, envio ao Supabase Storage bucket `roupas`, cadastro de atributos na tabela `public.roupas`, e exibição agrupada por Categoria com contadores no cabeçalho.

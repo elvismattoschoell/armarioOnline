@@ -10,11 +10,17 @@ CREATE TABLE IF NOT EXISTS public.roupas (
     cor VARCHAR(50),
     estacao VARCHAR(50),
     formalidade VARCHAR(50),
+    marca VARCHAR(100),
+    tamanho VARCHAR(50),
     status VARCHAR(50) DEFAULT 'Ativo',
     imagem_url TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Garantir adição de colunas marca e tamanho se a tabela já existir previamente
+ALTER TABLE public.roupas ADD COLUMN IF NOT EXISTS marca VARCHAR(100);
+ALTER TABLE public.roupas ADD COLUMN IF NOT EXISTS tamanho VARCHAR(50);
 
 -- Habilitar Row Level Security (RLS) na tabela 'roupas'
 ALTER TABLE public.roupas ENABLE ROW LEVEL SECURITY;

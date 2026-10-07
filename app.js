@@ -45,10 +45,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Views / Seções do App
   const dashboardView = document.getElementById('dashboard-view');
+  const wardrobeView = document.getElementById('wardrobe-view');
   const boardView = document.getElementById('board-view');
   const adminView = document.getElementById('admin-view');
   const settingsView = document.getElementById('settings-view');
-  const viewSections = [dashboardView, boardView, adminView, settingsView];
+  const viewSections = [dashboardView, wardrobeView, boardView, adminView, settingsView];
+
+  // Elementos do Guarda-Roupa
+  const wardrobeCategoriesContainer = document.getElementById('wardrobe-categories-container');
+  const btnOpenAddPieceModal = document.getElementById('btn-open-add-piece-modal');
+  const modalAddPiece = document.getElementById('modal-add-piece');
+  const btnClosePieceModal = document.getElementById('btn-close-piece-modal');
+  const btnCancelPiece = document.getElementById('btn-cancel-piece');
+  const addPieceForm = document.getElementById('add-piece-form');
+  const pieceImageInput = document.getElementById('piece-image');
+  const pieceImagePreview = document.getElementById('piece-image-preview');
+  const imagePreviewContainer = document.getElementById('image-preview-container');
+  const pieceNomeInput = document.getElementById('piece-nome');
+  const pieceCategoriaInput = document.getElementById('piece-categoria');
+  const categoriesDatalist = document.getElementById('categories-datalist');
+  const pieceCorInput = document.getElementById('piece-cor');
+  const pieceEstacaoInput = document.getElementById('piece-estacao');
+  const pieceFormalidadeInput = document.getElementById('piece-formalidade');
+  const pieceMarcaInput = document.getElementById('piece-marca');
+  const pieceTamanhoInput = document.getElementById('piece-tamanho');
+  const pieceModalMessage = document.getElementById('piece-modal-message');
+  const btnSubmitPiece = document.getElementById('btn-submit-piece');
 
   const btnCreateOutfit = document.getElementById('btn-quick-create-outfit');
   const btnCloseBoard = document.getElementById('btn-close-board');
@@ -115,6 +137,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!passwordModalMessage) return;
     passwordModalMessage.textContent = '';
     passwordModalMessage.style.display = 'none';
+  };
+
+  // Função auxiliar para mensagens no modal de roupa
+  const showPieceModalMessage = (text, type = 'error') => {
+    if (!pieceModalMessage) return;
+    pieceModalMessage.textContent = text;
+    pieceModalMessage.className = `auth-message ${type}`;
+    pieceModalMessage.style.display = 'block';
+  };
+
+  const clearPieceModalMessage = () => {
+    if (!pieceModalMessage) return;
+    pieceModalMessage.textContent = '';
+    pieceModalMessage.style.display = 'none';
   };
 
   // Alternar entre formulários de Login e Cadastro
@@ -205,6 +241,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         pageTitle.setAttribute('data-i18n', 'page_dashboard');
         pageTitle.textContent = t('page_dashboard');
       }
+    } else if (viewName === 'wardrobe') {
+      if (wardrobeView) wardrobeView.style.display = 'block';
+      if (pageTitle) {
+        pageTitle.setAttribute('data-i18n', 'page_wardrobe');
+        pageTitle.textContent = t('page_wardrobe');
+      }
+      loadWardrobeItems();
     } else if (viewName === 'board') {
       if (boardView) boardView.style.display = 'block';
       if (pageTitle) {
@@ -267,13 +310,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       let totalItems = 0;
       const { count: itemsCount, error: itemsErr } = await supabaseClient
-        .from('items')
+        .from('roupas')
         .select('*', { count: 'exact', head: true });
 
       if (!itemsErr && itemsCount !== null) {
         totalItems = itemsCount;
       } else {
-        totalItems = 0;
+        // Fallback para tabela alternativa caso exista
+        const { count: fallbackCount, error: fallbackErr } = await supabaseClient
+          .from('items')
+          .select('*', { count: 'exact', head: true });
+        if (!fallbackErr && fallbackCount !== null) {
+          totalItems = fallbackCount;
+        } else {
+          totalItems = 0;
+        }
       }
 
       if (metricUsersCount) metricUsersCount.textContent = totalUsers.toString();
@@ -497,7 +548,295 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (btnAddItem) {
     btnAddItem.addEventListener('click', () => {
-      console.log('Ação rápida: Adicionar Peça iniciada.');
+      openAddPieceModal();
+    });
+  }
+
+  // --- Lógica e Operações do Guarda-Roupa ---
+
+  // Preview de Imagem selecionada no Modal
+  if (pieceImageInput) {
+    pieceImageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (pieceImagePreview) pieceImagePreview.src = event.target.result;
+          if (imagePreviewContainer) imagePreviewContainer.style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        if (pieceImagePreview) pieceImagePreview.src = '';
+        if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
+      }
+    });
+  }
+
+  // Abrir e Fechar Modal de Cadastro de Peça
+  const openAddPieceModal = () => {
+    clearPieceModalMessage();
+    if (addPieceForm) addPieceForm.reset();
+    if (pieceImagePreview) pieceImagePreview.src = '';
+    if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
+    if (modalAddPiece) modalAddPiece.style.display = 'flex';
+  };
+
+  const closeAddPieceModal = () => {
+    if (modalAddPiece) modalAddPiece.style.display = 'none';
+    clearPieceModalMessage();
+    if (addPieceForm) addPieceForm.reset();
+    if (pieceImagePreview) pieceImagePreview.src = '';
+    if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
+  };
+
+  if (btnOpenAddPieceModal) {
+    btnOpenAddPieceModal.addEventListener('click', openAddPieceModal);
+  }
+
+  if (btnClosePieceModal) {
+    btnClosePieceModal.addEventListener('click', closeAddPieceModal);
+  }
+
+  if (btnCancelPiece) {
+    btnCancelPiece.addEventListener('click', closeAddPieceModal);
+  }
+
+  // Atualizar Datalist Autocomplete de Categorias
+  const updateCategoriesDatalist = (existingCategories) => {
+    if (!categoriesDatalist) return;
+    const defaultCategories = [
+      'Camisetas',
+      'Camisas',
+      'Calças',
+      'Bermudas e Shorts',
+      'Casacos e Jaquetas',
+      'Vestidos e Saias',
+      'Calçados',
+      'Acessórios'
+    ];
+
+    const uniqueCategories = Array.from(
+      new Set([...defaultCategories, ...existingCategories.filter(Boolean)])
+    );
+
+    categoriesDatalist.innerHTML = uniqueCategories
+      .map(cat => `<option value="${cat.trim()}"></option>`)
+      .join('');
+  };
+
+  // Carregar e Renderizar Peças do Guarda-Roupa Agrupadas por Categoria
+  const loadWardrobeItems = async () => {
+    if (!supabaseClient || !currentUser) return;
+    if (!wardrobeCategoriesContainer) return;
+
+    wardrobeCategoriesContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 32px;">Carregando peças...</p>';
+
+    try {
+      const { data: roupas, error } = await supabaseClient
+        .from('roupas')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar roupas:', error);
+        wardrobeCategoriesContainer.innerHTML = `<p style="text-align: center; color: var(--error-text); padding: 32px;">${translateSupabaseError(error)}</p>`;
+        return;
+      }
+
+      if (!roupas || roupas.length === 0) {
+        wardrobeCategoriesContainer.innerHTML = `
+          <div class="empty-wardrobe-card">
+            <i data-lucide="shirt" class="empty-wardrobe-icon"></i>
+            <h4 class="card-title" data-i18n="empty_wardrobe_title">${t('empty_wardrobe_title')}</h4>
+            <p class="card-desc" data-i18n="empty_wardrobe_desc">${t('empty_wardrobe_desc')}</p>
+          </div>
+        `;
+        updateCategoriesDatalist([]);
+        refreshIcons();
+        return;
+      }
+
+      // Agrupa peças por Categoria
+      const grouped = {};
+      roupas.forEach(item => {
+        const cat = item.categoria ? item.categoria.trim() : 'Outros';
+        if (!grouped[cat]) {
+          grouped[cat] = [];
+        }
+        grouped[cat].push(item);
+      });
+
+      // Atualiza datalist autocomplete com categorias existentes
+      updateCategoriesDatalist(Object.keys(grouped));
+
+      // Limpa container e renderiza cada grupo de categoria
+      wardrobeCategoriesContainer.innerHTML = '';
+
+      Object.keys(grouped).forEach(categoryName => {
+        const items = grouped[categoryName];
+
+        const groupEl = document.createElement('div');
+        groupEl.className = 'category-group';
+
+        const headerEl = document.createElement('div');
+        headerEl.className = 'category-header';
+        headerEl.innerHTML = `
+          <div class="category-title-area">
+            <i data-lucide="tag" class="icon" style="color: var(--primary-color);"></i>
+            <h4 class="category-title">${categoryName}</h4>
+            <span class="category-badge">${categoryName} (${items.length})</span>
+          </div>
+        `;
+
+        const gridEl = document.createElement('div');
+        gridEl.className = 'pieces-grid';
+
+        items.forEach(piece => {
+          const cardEl = document.createElement('div');
+          cardEl.className = 'piece-card';
+
+          const imgHtml = piece.imagem_url
+            ? `<img src="${piece.imagem_url}" alt="${piece.nome}" class="piece-image" loading="lazy">`
+            : `
+              <div class="piece-image-placeholder">
+                <i data-lucide="image" class="icon"></i>
+                <span data-i18n="no_image">${t('no_image')}</span>
+              </div>
+            `;
+
+          let detailsTags = '';
+          if (piece.cor) detailsTags += `<span class="piece-tag">${piece.cor}</span>`;
+          if (piece.estacao) detailsTags += `<span class="piece-tag">${piece.estacao}</span>`;
+          if (piece.formalidade) detailsTags += `<span class="piece-tag">${piece.formalidade}</span>`;
+          if (piece.marca) detailsTags += `<span class="piece-tag">${piece.marca}</span>`;
+          if (piece.tamanho) detailsTags += `<span class="piece-tag">${t('piece_tamanho_label')}: ${piece.tamanho}</span>`;
+
+          cardEl.innerHTML = `
+            <div class="piece-image-wrapper">
+              ${imgHtml}
+            </div>
+            <div class="piece-info">
+              <h5 class="piece-title">${piece.nome}</h5>
+              ${detailsTags ? `<div class="piece-details">${detailsTags}</div>` : ''}
+            </div>
+          `;
+
+          gridEl.appendChild(cardEl);
+        });
+
+        groupEl.appendChild(headerEl);
+        groupEl.appendChild(gridEl);
+        wardrobeCategoriesContainer.appendChild(groupEl);
+      });
+
+      refreshIcons();
+    } catch (err) {
+      console.error('Erro na renderização do guarda-roupa:', err);
+      wardrobeCategoriesContainer.innerHTML = `<p style="text-align: center; color: var(--error-text); padding: 32px;">${t('supabase_connection_error')}</p>`;
+    }
+  };
+
+  // Submissão do Formulário de Nova Peça
+  if (addPieceForm) {
+    addPieceForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearPieceModalMessage();
+
+      const nome = pieceNomeInput.value.trim();
+      const categoria = pieceCategoriaInput.value.trim();
+      const cor = pieceCorInput ? pieceCorInput.value.trim() : '';
+      const estacao = pieceEstacaoInput ? pieceEstacaoInput.value : '';
+      const formalidade = pieceFormalidadeInput ? pieceFormalidadeInput.value : '';
+      const marca = pieceMarcaInput ? pieceMarcaInput.value.trim() : '';
+      const tamanho = pieceTamanhoInput ? pieceTamanhoInput.value.trim() : '';
+
+      if (!nome || !categoria) {
+        showPieceModalMessage(t('piece_name_category_required'));
+        return;
+      }
+
+      if (!supabaseClient || !currentUser) {
+        showPieceModalMessage(t('supabase_connection_error'));
+        return;
+      }
+
+      btnSubmitPiece.disabled = true;
+      btnSubmitPiece.querySelector('span').textContent = t('btn_saving_piece');
+
+      let publicImageUrl = null;
+
+      // Upload de Imagem para o bucket 'roupas' no Supabase Storage
+      const imageFile = pieceImageInput.files[0];
+      if (imageFile) {
+        try {
+          const fileExt = imageFile.name.split('.').pop();
+          const fileName = `${currentUser.id}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+
+          const { data: storageData, error: storageErr } = await supabaseClient
+            .storage
+            .from('roupas')
+            .upload(fileName, imageFile, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (storageErr) {
+            console.error('Erro de upload de imagem:', storageErr);
+            showPieceModalMessage(`Erro ao enviar imagem: ${storageErr.message || storageErr.error_description || 'Falha no Storage'}`);
+            btnSubmitPiece.disabled = false;
+            btnSubmitPiece.querySelector('span').textContent = t('btn_save_piece');
+            return;
+          }
+
+          // Obter URL pública
+          const { data: publicUrlData } = supabaseClient
+            .storage
+            .from('roupas')
+            .getPublicUrl(fileName);
+
+          if (publicUrlData && publicUrlData.publicUrl) {
+            publicImageUrl = publicUrlData.publicUrl;
+          }
+        } catch (uploadErr) {
+          console.error('Erro exceção no upload:', uploadErr);
+          showPieceModalMessage(`Erro no upload: ${uploadErr.message || 'Falha de conexão'}`);
+          btnSubmitPiece.disabled = false;
+          btnSubmitPiece.querySelector('span').textContent = t('btn_save_piece');
+          return;
+        }
+      }
+
+      // Gravação dos Dados da Peça na tabela public.roupas
+      const { data: insertedPiece, error: insertErr } = await supabaseClient
+        .from('roupas')
+        .insert({
+          user_id: currentUser.id,
+          nome: nome,
+          categoria: categoria,
+          cor: cor || null,
+          estacao: estacao || null,
+          formalidade: formalidade || null,
+          marca: marca || null,
+          tamanho: tamanho || null,
+          imagem_url: publicImageUrl,
+          status: 'Ativo'
+        })
+        .select()
+        .single();
+
+      btnSubmitPiece.disabled = false;
+      btnSubmitPiece.querySelector('span').textContent = t('btn_save_piece');
+
+      if (insertErr) {
+        showPieceModalMessage(translateSupabaseError(insertErr));
+      } else {
+        showPieceModalMessage(t('piece_add_success'), 'success');
+        setTimeout(() => {
+          closeAddPieceModal();
+          showSection('wardrobe');
+        }, 1200);
+      }
     });
   }
 

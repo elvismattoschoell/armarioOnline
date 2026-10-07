@@ -214,6 +214,24 @@
           </div>
         </section>
 
+        <!-- Seção do Guarda-Roupa (Armário) - Oculto por padrão -->
+        <section id="wardrobe-view" class="view-section" style="display: none;">
+          <div class="flow-header">
+            <div>
+              <h3 data-i18n="wardrobe_title">Meu Guarda-Roupa</h3>
+              <p class="flow-subtitle" data-i18n="wardrobe_subtitle">Gerencie suas peças organizadas e divididas por categoria.</p>
+            </div>
+            <button class="btn btn-primary" id="btn-open-add-piece-modal">
+              <i data-lucide="plus" class="icon"></i>
+              <span data-i18n="btn_add_piece">Adicionar Peça</span>
+            </button>
+          </div>
+
+          <div id="wardrobe-categories-container" class="wardrobe-categories-container">
+            <!-- As seções agrupadas por categoria serão injetadas aqui via Javascript -->
+          </div>
+        </section>
+
         <!-- Seção de Configurações - Oculto por padrão -->
         <section id="settings-view" class="view-section" style="display: none;">
           <div class="dashboard-grid">
@@ -270,6 +288,113 @@
           </div>
         </section>
       </main>
+    </div>
+  </div>
+
+  <!-- Modal para Cadastro de Nova Peça de Roupa -->
+  <div id="modal-add-piece" class="modal-overlay" style="display: none;">
+    <div class="modal-card modal-card-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" data-i18n="modal_add_piece_title">Cadastrar Nova Peça</h3>
+        <button id="btn-close-piece-modal" class="btn-icon" type="button">
+          <i data-lucide="x" class="icon"></i>
+        </button>
+      </div>
+      <p class="modal-desc" data-i18n="modal_add_piece_desc">Tire uma foto ou faça upload da imagem da sua peça de roupa.</p>
+
+      <div id="piece-modal-message" class="auth-message" style="display: none;"></div>
+
+      <form id="add-piece-form" class="auth-form">
+        <!-- Input de Imagem com Captura Nativa -->
+        <div class="form-group">
+          <label for="piece-image" data-i18n="piece_image_label">Foto da Peça</label>
+          <input type="file" id="piece-image" class="form-input" accept="image/*" capture="environment">
+          <div id="image-preview-container" class="image-preview-container" style="display: none;">
+            <img id="piece-image-preview" src="" alt="Prévia da peça" class="piece-image-preview">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <!-- Nome (Obrigatório) -->
+          <div class="form-group flex-1">
+            <label for="piece-nome" data-i18n="piece_nome_label">Nome da Peça *</label>
+            <input type="text" id="piece-nome" class="form-input" placeholder="Ex: Camiseta Branca Básica" data-i18n-placeholder="piece_nome_placeholder" required>
+          </div>
+
+          <!-- Categoria com Autocompletar / Sugestões e Personalização (Obrigatório) -->
+          <div class="form-group flex-1">
+            <label for="piece-categoria" data-i18n="piece_categoria_label">Categoria *</label>
+            <input type="text" id="piece-categoria" list="categories-datalist" class="form-input" placeholder="Ex: Camisetas, Calças..." data-i18n-placeholder="piece_categoria_placeholder" required autocomplete="off">
+            <datalist id="categories-datalist">
+              <option value="Camisetas"></option>
+              <option value="Camisas"></option>
+              <option value="Calças"></option>
+              <option value="Bermudas e Shorts"></option>
+              <option value="Casacos e Jaquetas"></option>
+              <option value="Vestidos e Saias"></option>
+              <option value="Calçados"></option>
+              <option value="Acessórios"></option>
+            </datalist>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <!-- Cor (Opcional) -->
+          <div class="form-group flex-1">
+            <label for="piece-cor" data-i18n="piece_cor_label">Cor</label>
+            <input type="text" id="piece-cor" class="form-input" placeholder="Ex: Preto, Azul Marinho..." data-i18n-placeholder="piece_cor_placeholder">
+          </div>
+
+          <!-- Estação (Opcional) -->
+          <div class="form-group flex-1">
+            <label for="piece-estacao" data-i18n="piece_estacao_label">Estação</label>
+            <select id="piece-estacao" class="form-input form-select">
+              <option value="" data-i18n="select_option_none">Selecione...</option>
+              <option value="Verão" data-i18n="season_summer">Verão</option>
+              <option value="Inverno" data-i18n="season_winter">Inverno</option>
+              <option value="Outono" data-i18n="season_autumn">Outono</option>
+              <option value="Primavera" data-i18n="season_spring">Primavera</option>
+              <option value="Todas as Estações" data-i18n="season_all">Todas as Estações</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <!-- Formalidade (Opcional) -->
+          <div class="form-group flex-1">
+            <label for="piece-formalidade" data-i18n="piece_formalidade_label">Formalidade</label>
+            <select id="piece-formalidade" class="form-input form-select">
+              <option value="" data-i18n="select_option_none">Selecione...</option>
+              <option value="Casual" data-i18n="formality_casual">Casual</option>
+              <option value="Esporte Fino" data-i18n="formality_smart_casual">Esporte Fino</option>
+              <option value="Formal / Social" data-i18n="formality_formal">Formal / Social</option>
+
+              <option value="Esportivo" data-i18n="formality_sport">Esportivo</option>
+            </select>
+          </div>
+
+          <!-- Marca (Opcional) -->
+          <div class="form-group flex-1">
+            <label for="piece-marca" data-i18n="piece_marca_label">Marca</label>
+            <input type="text" id="piece-marca" class="form-input" placeholder="Ex: Zara, Nike..." data-i18n-placeholder="piece_marca_placeholder">
+          </div>
+
+          <!-- Tamanho (Opcional) -->
+          <div class="form-group flex-1">
+            <label for="piece-tamanho" data-i18n="piece_tamanho_label">Tamanho</label>
+            <input type="text" id="piece-tamanho" class="form-input" placeholder="Ex: M, G, 42..." data-i18n-placeholder="piece_tamanho_placeholder">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-piece">
+            <span data-i18n="btn_cancel">Cancelar</span>
+          </button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-piece">
+            <span data-i18n="btn_save_piece">Salvar Peça</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
