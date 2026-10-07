@@ -13,6 +13,10 @@
 
   <!-- Lucide Icons via CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Cropper.js CSS and JS via CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 </head>
 <body>
   <!-- Tela Dedicada de Autenticação -->
@@ -304,13 +308,32 @@
 
       <div id="piece-modal-message" class="auth-message" style="display: none;"></div>
 
-      <form id="add-piece-form" class="auth-form">
-        <!-- Input de Imagem com Captura Nativa -->
+      <form id="add-piece-form" class="auth-form modal-form-body">
+        <!-- Input de Imagem com Captura Nativa e Processamento Visual -->
         <div class="form-group">
           <label for="piece-image" data-i18n="piece_image_label">Foto da Peça</label>
           <input type="file" id="piece-image" class="form-input" accept="image/*" capture="environment">
           <div id="image-preview-container" class="image-preview-container" style="display: none;">
             <img id="piece-image-preview" src="" alt="Prévia da peça" class="piece-image-preview">
+            <div id="image-processing-actions" class="image-processing-actions">
+              <button type="button" id="btn-remove-bg" class="btn btn-secondary btn-sm" title="Remover Fundo da Imagem">
+                <i data-lucide="wand-2" class="icon"></i>
+                <span data-i18n="btn_remove_bg">Remover Fundo</span>
+              </button>
+              <button type="button" id="btn-crop-image" class="btn btn-secondary btn-sm" title="Recortar Imagem">
+                <i data-lucide="crop" class="icon"></i>
+                <span data-i18n="btn_crop">Recortar</span>
+              </button>
+            </div>
+            <div id="crop-actions" class="crop-actions" style="display: none;">
+              <button type="button" id="btn-apply-crop" class="btn btn-primary btn-sm">
+                <i data-lucide="check" class="icon"></i>
+                <span data-i18n="btn_apply_crop">Aplicar Recorte</span>
+              </button>
+              <button type="button" id="btn-cancel-crop" class="btn btn-secondary btn-sm">
+                <span data-i18n="btn_cancel">Cancelar</span>
+              </button>
+            </div>
           </div>
         </div>
 
