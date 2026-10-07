@@ -601,6 +601,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnCancelPiece.addEventListener('click', closeAddPieceModal);
   }
 
+  if (modalAddPiece) {
+    modalAddPiece.addEventListener('click', (e) => {
+      if (e.target === modalAddPiece) {
+        closeAddPieceModal();
+      }
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modalAddPiece && modalAddPiece.style.display === 'flex') {
+      closeAddPieceModal();
+    }
+  });
+
+  // Event Delegation global para gatilhos de cadastro de peça
+  document.addEventListener('click', (e) => {
+    const triggerBtn = e.target.closest('[data-action="open-add-piece"]');
+    if (triggerBtn) {
+      e.preventDefault();
+      openAddPieceModal();
+    }
+  });
+
   // Atualizar Datalist Autocomplete de Categorias
   const updateCategoriesDatalist = (existingCategories) => {
     if (!categoriesDatalist) return;
@@ -650,6 +673,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             <i data-lucide="shirt" class="empty-wardrobe-icon"></i>
             <h4 class="card-title" data-i18n="empty_wardrobe_title">${t('empty_wardrobe_title')}</h4>
             <p class="card-desc" data-i18n="empty_wardrobe_desc">${t('empty_wardrobe_desc')}</p>
+            <button class="btn btn-primary" data-action="open-add-piece" style="margin-top: 16px;">
+              <i data-lucide="plus" class="icon"></i>
+              <span data-i18n="btn_add_piece">${t('btn_add_piece')}</span>
+            </button>
           </div>
         `;
         updateCategoriesDatalist([]);
