@@ -122,11 +122,6 @@ export const translations = {
     piece_tamanho_placeholder: "Ex: M, G, 42...",
     btn_save_piece: "Salvar Peça",
     btn_saving_piece: "Salvando...",
-    btn_remove_bg: "Remover Fundo",
-    btn_removing_bg: "Removendo fundo (IA)...",
-    bg_removed_success: "Fundo removido com IA com sucesso!",
-    bg_removal_error: "Erro ao remover fundo com IA.",
-    bg_removal_fallback: "A IA falhou, use o recorte manual",
     btn_choose_photo: "Escolher Foto",
 
     // Categorias de Roupas
@@ -302,11 +297,6 @@ export const translations = {
     piece_tamanho_placeholder: "Ex: M, L, 42...",
     btn_save_piece: "Save Item",
     btn_saving_piece: "Saving...",
-    btn_remove_bg: "Remove Background",
-    btn_removing_bg: "Removing bg (AI)...",
-    bg_removed_success: "Background removed with AI successfully!",
-    bg_removal_error: "Error removing background with AI.",
-    bg_removal_fallback: "A IA falhou, use o recorte manual",
     btn_choose_photo: "Choose Photo",
 
     // Categorias de Roupas
@@ -482,11 +472,6 @@ export const translations = {
     piece_tamanho_placeholder: "Например: M, L, 42...",
     btn_save_piece: "Сохранить вещь",
     btn_saving_piece: "Сохранение...",
-    btn_remove_bg: "Удалить фон",
-    btn_removing_bg: "Удаление фона (ИИ)...",
-    bg_removed_success: "Фон успешно удален с помощью ИИ!",
-    bg_removal_error: "Ошибка при удалении фона с помощью ИИ.",
-    bg_removal_fallback: "A IA falhou, use o recorte manual",
     btn_choose_photo: "Выбрать фото",
 
     // Categorias de Roupas

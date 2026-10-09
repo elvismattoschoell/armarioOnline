@@ -556,7 +556,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // --- Lógica e Operações do Guarda-Roupa e Processamento Visual de Imagens ---
 
   // Elementos do Processamento de Imagem
-  const btnRemoveBg = document.getElementById('btn-remove-bg');
   const btnInvertSelection = document.getElementById('btn-invert-selection');
   const btnCropImage = document.getElementById('btn-crop-image');
   const btnEraserDirect = document.getElementById('btn-eraser-direct');
@@ -679,104 +678,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       origImg.src = origSrc;
     });
   };
-
-  // Remoção de Fundo via Hugging Face Inference API (briaai/RMBG-1.4) / Edge Function
-  if (btnRemoveBg) {
-    btnRemoveBg.addEventListener('click', async () => {
-      if (!pieceImagePreview || !pieceImagePreview.src) return;
-
-      closeCanvasEditor();
-      clearPieceModalMessage();
-
-      const originalBtnText = btnRemoveBg.querySelector('span')
-        ? btnRemoveBg.querySelector('span').textContent
-        : t('btn_remove_bg');
-
-      btnRemoveBg.disabled = true;
-      if (btnRemoveBg.querySelector('span')) {
-        btnRemoveBg.querySelector('span').textContent = t('btn_removing_bg');
-      }
-
-      const imageSource = originalImageSrc || pieceImagePreview.src;
-
-      try {
-        let responseBlob = null;
-        let hfApiKey = '';
-
-        try {
-          if (typeof import.meta !== 'undefined' && import.meta && import.meta.env) {
-            hfApiKey = import.meta.env.VITE_HUGGINGFACE_API_KEY || '';
-          }
-        } catch (e) {
-          hfApiKey = '';
-        }
-
-        // Tenta chamada direta à API de Inferência do Hugging Face (briaai/RMBG-1.4)
-        if (hfApiKey) {
-          try {
-            const imgRes = await fetch(imageSource);
-            const imgBlob = await imgRes.blob();
-
-            const hfRes = await fetch("https://api-inference.huggingface.co/models/briaai/RMBG-1.4", {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${hfApiKey}`,
-                "Content-Type": "application/octet-stream"
-              },
-              body: imgBlob
-            });
-
-            if (hfRes.ok) {
-              const resBlob = await hfRes.blob();
-              // Se não for um fallback header e o tipo for image
-              if (!hfRes.headers.get("X-Fallback") && resBlob.type.includes("image")) {
-                responseBlob = resBlob;
-              }
-            }
-          } catch (hfErr) {
-            console.warn("Falha ao chamar Hugging Face diretamente:", hfErr);
-          }
-        }
-
-        // Fallback para Supabase Edge Function
-        if (!responseBlob && supabaseClient && supabaseClient.functions) {
-          try {
-            const { data, error } = await supabaseClient.functions.invoke('remove-background', {
-              body: { image: imageSource }
-            });
-            if (!error && data) {
-              responseBlob = data instanceof Blob ? data : new Blob([data], { type: 'image/png' });
-            }
-          } catch (edgeErr) {
-            console.warn("Falha ao chamar Edge Function:", edgeErr);
-          }
-        }
-
-        if (responseBlob) {
-          const compositedBlob = await applyAlphaMaskFromBlob(imageSource, responseBlob);
-          processedBlob = compositedBlob;
-          const newUrl = URL.createObjectURL(compositedBlob);
-          pieceImagePreview.src = newUrl;
-          showPieceModalMessage(t('bg_removed_success'), 'success');
-        } else {
-          // Graceful Fallback: Não quebrar nem exibir erro vermelho!
-          pieceImagePreview.src = imageSource;
-          showPieceModalMessage(t('bg_removal_fallback'), 'info');
-        }
-      } catch (err) {
-        console.warn('Erro na remoção de fundo:', err);
-        if (pieceImagePreview && imageSource) {
-          pieceImagePreview.src = imageSource;
-        }
-        showPieceModalMessage(t('bg_removal_fallback'), 'info');
-      } finally {
-        btnRemoveBg.disabled = false;
-        if (btnRemoveBg.querySelector('span')) {
-          btnRemoveBg.querySelector('span').textContent = originalBtnText;
-        }
-      }
-    });
-  }
 
   // Inverter Seleção (Togglamento da Máscara de Transparência)
   if (btnInvertSelection) {
