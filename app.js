@@ -254,6 +254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         pageTitle.setAttribute('data-i18n', 'page_board');
         pageTitle.textContent = t('page_board');
       }
+      initBoardView();
     } else if (viewName === 'admin') {
       if (adminView) adminView.style.display = 'block';
       if (pageTitle) {
@@ -679,7 +680,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   };
 
-  // Remoção de Fundo via IA / Segmentação de Imagem (@imgly/background-removal)
+  // Remoção de Fundo via Supabase Edge Function (briaai/RMBG-1.4)
   if (btnRemoveBg) {
     btnRemoveBg.addEventListener('click', async () => {
       if (!pieceImagePreview || !pieceImagePreview.src) return;
@@ -697,28 +698,47 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       try {
-        const bgRemovalModule = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/+esm');
-        const removeBackground = bgRemovalModule.removeBackground;
-
-        // Executa a remoção de fundo com modelo de IA (ONNX / WebAssembly)
         const imageSource = originalImageSrc || pieceImagePreview.src;
-        const rawAiBlob = await removeBackground(imageSource, {
-          output: {
-            format: 'image/png',
-            quality: 1.0
-          }
-        });
+        let responseBlob = null;
 
-        if (rawAiBlob) {
-          // Aplica a máscara Alpha sobre a imagem original para preservar RGB, saturação e cores 100% intocadas
-          const compositedBlob = await applyAlphaMaskFromBlob(imageSource, rawAiBlob);
+        if (supabaseClient && supabaseClient.functions) {
+          const { data, error } = await supabaseClient.functions.invoke('remove-background', {
+            body: { image: imageSource }
+          });
+          if (!error && data) {
+            responseBlob = data instanceof Blob ? data : new Blob([data], { type: 'image/png' });
+          }
+        }
+
+        if (!responseBlob) {
+          // Fallback HTTP request to Supabase Edge Function endpoint directly or process
+          const SUPABASE_URL = 'https://aetjnkhkphdomjufawfh.supabase.co';
+          const functionUrl = `${SUPABASE_URL}/functions/v1/remove-background`;
+          const res = await fetch(functionUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': 'sb_publishable_fJmTV_HEH0EKff1OSUruAw_xuE8j9fa',
+              'Authorization': `Bearer sb_publishable_fJmTV_HEH0EKff1OSUruAw_xuE8j9fa`
+            },
+            body: JSON.stringify({ image: imageSource })
+          });
+          if (res.ok) {
+            responseBlob = await res.blob();
+          }
+        }
+
+        if (responseBlob) {
+          const compositedBlob = await applyAlphaMaskFromBlob(imageSource, responseBlob);
           processedBlob = compositedBlob;
           const newUrl = URL.createObjectURL(compositedBlob);
           pieceImagePreview.src = newUrl;
           showPieceModalMessage(t('bg_removed_success'), 'success');
+        } else {
+          throw new Error('Falha ao processar imagem no backend.');
         }
       } catch (err) {
-        console.error('Erro na remoção de fundo por IA:', err);
+        console.error('Erro na remoção de fundo via Edge Function:', err);
         showPieceModalMessage(t('bg_removal_error'), 'error');
       } finally {
         btnRemoveBg.disabled = false;
@@ -1419,4 +1439,511 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('Ação rápida: Criar Coleção iniciada.');
     });
   }
+
+  // ============================================================================
+  // --- Módulo Módulo Board View (Combinações & Canvas Editor) ---
+  // ============================================================================
+
+  const boardCanvas = document.getElementById('board-canvas');
+  const boardCanvasPlaceholder = document.getElementById('board-canvas-placeholder');
+  const boardItemsPalette = document.getElementById('board-items-palette');
+  const boardOutfitNameInput = document.getElementById('board-outfit-name');
+  const btnSaveBoard = document.getElementById('btn-save-board');
+  const btnClearBoard = document.getElementById('btn-clear-board');
+  const savedCombinationsList = document.getElementById('saved-combinations-list');
+
+  let canvasItems = []; // Array de itens ativos no canvas
+  let selectedItemId = null;
+  let nextZIndex = 1;
+
+  // Carregar Módulo Board View
+  const initBoardView = async () => {
+    await loadBoardPaletteItems();
+    await loadSavedCombinations();
+  };
+
+  // Carregar Peças na Barra Lateral (Palette)
+  const loadBoardPaletteItems = async () => {
+    if (!supabaseClient || !currentUser || !boardItemsPalette) return;
+
+    boardItemsPalette.innerHTML = '<p style="font-size:0.75rem; color: var(--text-muted); grid-column: span 2;">Carregando peças...</p>';
+
+    try {
+      const { data: roupas, error } = await supabaseClient
+        .from('roupas')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error || !roupas || roupas.length === 0) {
+        boardItemsPalette.innerHTML = `<p style="font-size:0.75rem; color: var(--text-muted); grid-column: span 2;">${t('empty_wardrobe_title')}</p>`;
+        return;
+      }
+
+      boardItemsPalette.innerHTML = '';
+      roupas.forEach(piece => {
+        if (!piece.imagem_url) return;
+
+        const paletteItem = document.createElement('div');
+        paletteItem.className = 'board-palette-item';
+        paletteItem.title = piece.nome;
+        paletteItem.innerHTML = `
+          <img src="${piece.imagem_url}" alt="${piece.nome}" class="board-palette-img">
+          <span class="board-palette-name">${piece.nome}</span>
+        `;
+
+        paletteItem.addEventListener('click', () => {
+          addItemToCanvas(piece);
+        });
+
+        boardItemsPalette.appendChild(paletteItem);
+      });
+    } catch (err) {
+      console.error('Erro ao carregar palette do board:', err);
+    }
+  };
+
+  // Atualizar visibilidade do Placeholder
+  const updatePlaceholderVisibility = () => {
+    if (!boardCanvasPlaceholder) return;
+    if (canvasItems.length === 0) {
+      boardCanvasPlaceholder.style.display = 'flex';
+    } else {
+      boardCanvasPlaceholder.style.display = 'none';
+    }
+  };
+
+  // Renderizar e re-sincronizar o Canvas
+  const renderCanvas = () => {
+    if (!boardCanvas) return;
+
+    // Limpa elementos existentes mantendo o placeholder
+    const existingElements = boardCanvas.querySelectorAll('.canvas-item');
+    existingElements.forEach(el => el.remove());
+
+    updatePlaceholderVisibility();
+
+    canvasItems.forEach(item => {
+      const itemEl = document.createElement('div');
+      itemEl.className = `canvas-item ${item.id === selectedItemId ? 'selected' : ''}`;
+      itemEl.style.left = `${item.x}px`;
+      itemEl.style.top = `${item.y}px`;
+      itemEl.style.width = `${item.width}px`;
+      itemEl.style.height = `${item.height}px`;
+      itemEl.style.zIndex = item.zIndex;
+      itemEl.setAttribute('data-id', item.id);
+
+      itemEl.innerHTML = `
+        <img src="${item.image_url}" alt="${item.nome}" class="canvas-item-img">
+        <div class="canvas-item-controls">
+          <button class="canvas-ctrl-btn btn-layer-up" title="Avançar Camada">▲</button>
+          <button class="canvas-ctrl-btn btn-layer-down" title="Recuar Camada">▼</button>
+          <button class="canvas-ctrl-btn btn-delete-item" title="Remover Peça">✕</button>
+        </div>
+        <div class="canvas-resize-handle"></div>
+      `;
+
+      // Seleção e Arraste
+      makeCanvasItemInteractive(itemEl, item);
+
+      boardCanvas.appendChild(itemEl);
+    });
+
+    refreshIcons();
+  };
+
+  // Tornar Elemento do Canvas Arrastável, Redimensionável e Selecionável
+  const makeCanvasItemInteractive = (itemEl, item) => {
+    // Seleção ao clicar
+    itemEl.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      if (selectedItemId !== item.id) {
+        selectedItemId = item.id;
+        renderCanvas();
+      }
+    });
+
+    itemEl.addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      if (selectedItemId !== item.id) {
+        selectedItemId = item.id;
+        renderCanvas();
+      }
+    }, { passive: true });
+
+    // Botões de Controles de Camada e Deleção
+    const btnLayerUp = itemEl.querySelector('.btn-layer-up');
+    const btnLayerDown = itemEl.querySelector('.btn-layer-down');
+    const btnDeleteItem = itemEl.querySelector('.btn-delete-item');
+    const resizeHandle = itemEl.querySelector('.canvas-resize-handle');
+
+    if (btnLayerUp) {
+      btnLayerUp.addEventListener('click', (e) => {
+        e.stopPropagation();
+        item.zIndex += 1;
+        if (item.zIndex > nextZIndex) nextZIndex = item.zIndex;
+        renderCanvas();
+      });
+    }
+
+    if (btnLayerDown) {
+      btnLayerDown.addEventListener('click', (e) => {
+        e.stopPropagation();
+        item.zIndex = Math.max(1, item.zIndex - 1);
+        renderCanvas();
+      });
+    }
+
+    if (btnDeleteItem) {
+      btnDeleteItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        canvasItems = canvasItems.filter(i => i.id !== item.id);
+        if (selectedItemId === item.id) selectedItemId = null;
+        renderCanvas();
+      });
+    }
+
+    // Lógica de Drag & Drop (Arraste)
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let initialX = 0;
+    let initialY = 0;
+
+    const startDrag = (e) => {
+      if (e.target === resizeHandle || e.target.closest('.canvas-item-controls')) return;
+      isDragging = true;
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      startX = clientX;
+      startY = clientY;
+      initialX = item.x;
+      initialY = item.y;
+
+      document.addEventListener('mousemove', moveDrag);
+      document.addEventListener('mouseup', stopDrag);
+      document.addEventListener('touchmove', moveDrag, { passive: false });
+      document.addEventListener('touchend', stopDrag);
+    };
+
+    const moveDrag = (e) => {
+      if (!isDragging) return;
+      if (e.touches) e.preventDefault();
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      const deltaX = clientX - startX;
+      const deltaY = clientY - startY;
+
+      item.x = Math.max(0, initialX + deltaX);
+      item.y = Math.max(0, initialY + deltaY);
+
+      itemEl.style.left = `${item.x}px`;
+      itemEl.style.top = `${item.y}px`;
+    };
+
+    const stopDrag = () => {
+      isDragging = false;
+      document.removeEventListener('mousemove', moveDrag);
+      document.removeEventListener('mouseup', stopDrag);
+      document.removeEventListener('touchmove', moveDrag);
+      document.removeEventListener('touchend', stopDrag);
+    };
+
+    itemEl.addEventListener('mousedown', startDrag);
+    itemEl.addEventListener('touchstart', startDrag, { passive: true });
+
+    // Lógica de Redimensionamento (Resize)
+    let isResizing = false;
+    let startW = 0;
+    let startH = 0;
+
+    if (resizeHandle) {
+      const startResize = (e) => {
+        e.stopPropagation();
+        isResizing = true;
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        startX = clientX;
+        startY = clientY;
+        startW = item.width;
+        startH = item.height;
+
+        document.addEventListener('mousemove', moveResize);
+        document.addEventListener('mouseup', stopResize);
+        document.addEventListener('touchmove', moveResize, { passive: false });
+        document.addEventListener('touchend', stopResize);
+      };
+
+      const moveResize = (e) => {
+        if (!isResizing) return;
+        if (e.touches) e.preventDefault();
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        const deltaX = clientX - startX;
+        const deltaY = clientY - startY;
+
+        item.width = Math.max(40, startW + deltaX);
+        item.height = Math.max(40, startH + deltaY);
+
+        itemEl.style.width = `${item.width}px`;
+        itemEl.style.height = `${item.height}px`;
+      };
+
+      const stopResize = () => {
+        isResizing = false;
+        document.removeEventListener('mousemove', moveResize);
+        document.removeEventListener('mouseup', stopResize);
+        document.removeEventListener('touchmove', moveResize);
+        document.removeEventListener('touchend', stopResize);
+      };
+
+      resizeHandle.addEventListener('mousedown', startResize);
+      resizeHandle.addEventListener('touchstart', startResize, { passive: true });
+    }
+  };
+
+  // Adicionar Peça ao Canvas
+  const addItemToCanvas = (piece) => {
+    const newItem = {
+      id: `item_${Date.now()}_${Math.random().toString(36).substring(2,6)}`,
+      piece_id: piece.id,
+      image_url: piece.imagem_url,
+      nome: piece.nome,
+      x: 50 + (canvasItems.length * 20) % 180,
+      y: 50 + (canvasItems.length * 20) % 180,
+      width: 150,
+      height: 150,
+      zIndex: ++nextZIndex
+    };
+
+    canvasItems.push(newItem);
+    selectedItemId = newItem.id;
+    renderCanvas();
+  };
+
+  // Desselecionar ao clicar no fundo do canvas
+  if (boardCanvas) {
+    boardCanvas.addEventListener('click', (e) => {
+      if (e.target === boardCanvas || e.target === boardCanvasPlaceholder) {
+        selectedItemId = null;
+        renderCanvas();
+      }
+    });
+  }
+
+  // Limpar Canvas
+  if (btnClearBoard) {
+    btnClearBoard.addEventListener('click', () => {
+      canvasItems = [];
+      selectedItemId = null;
+      if (boardOutfitNameInput) boardOutfitNameInput.value = '';
+      renderCanvas();
+    });
+  }
+
+  // Salvar Combinação
+  if (btnSaveBoard) {
+    btnSaveBoard.addEventListener('click', async () => {
+      const outfitName = boardOutfitNameInput ? boardOutfitNameInput.value.trim() : '';
+
+      if (!outfitName) {
+        alert(t('combination_name_required'));
+        return;
+      }
+
+      if (canvasItems.length === 0) {
+        alert(t('combination_empty_error'));
+        return;
+      }
+
+      if (!supabaseClient || !currentUser) {
+        alert(t('supabase_connection_error'));
+        return;
+      }
+
+      btnSaveBoard.disabled = true;
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('combinacoes')
+          .insert({
+            user_id: currentUser.id,
+            nome: outfitName,
+            canvas_state: canvasItems,
+            is_favorite: false
+          })
+          .select()
+          .single();
+
+        btnSaveBoard.disabled = false;
+
+        if (error) {
+          console.error('Erro ao salvar combinação:', error);
+          alert(translateSupabaseError(error));
+        } else {
+          alert(t('combination_save_success'));
+          if (boardOutfitNameInput) boardOutfitNameInput.value = '';
+          canvasItems = [];
+          selectedItemId = null;
+          renderCanvas();
+          await loadSavedCombinations();
+        }
+      } catch (err) {
+        console.error('Exceção ao salvar combinação:', err);
+        btnSaveBoard.disabled = false;
+      }
+    });
+  }
+
+  // Carregar e Renderizar Combinações Salvas com Ícone de Estrela (⭐) para Favorito
+  const loadSavedCombinations = async () => {
+    if (!supabaseClient || !currentUser || !savedCombinationsList) return;
+
+    savedCombinationsList.innerHTML = '<p style="text-align: center; color: var(--text-muted); grid-column: 1 / -1;">Carregando combinações...</p>';
+
+    try {
+      const { data: combinacoes, error } = await supabaseClient
+        .from('combinacoes')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar combinações:', error);
+        savedCombinationsList.innerHTML = `<p style="text-align: center; color: var(--error-text); grid-column: 1 / -1;">${translateSupabaseError(error)}</p>`;
+        return;
+      }
+
+      if (!combinacoes || combinacoes.length === 0) {
+        savedCombinationsList.innerHTML = `<p style="text-align: center; color: var(--text-muted); grid-column: 1 / -1;" data-i18n="no_saved_combinations">${t('no_saved_combinations')}</p>`;
+        return;
+      }
+
+      savedCombinationsList.innerHTML = '';
+
+      combinacoes.forEach(comb => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'combination-card';
+
+        // Previa das peças em miniatura
+        let miniItemsHtml = '';
+        if (Array.isArray(comb.canvas_state)) {
+          comb.canvas_state.forEach(ci => {
+            const miniWidth = Math.max(20, (ci.width || 150) * 0.3);
+            const miniHeight = Math.max(20, (ci.height || 150) * 0.3);
+            const miniLeft = (ci.x || 0) * 0.3;
+            const miniTop = (ci.y || 0) * 0.3;
+
+            miniItemsHtml += `
+              <img src="${ci.image_url}" alt="${ci.nome || ''}" style="position: absolute; left: ${miniLeft}px; top: ${miniTop}px; width: ${miniWidth}px; height: ${miniHeight}px; object-fit: contain; z-index: ${ci.zIndex || 1};">
+            `;
+          });
+        }
+
+        const isFav = !!comb.is_favorite;
+
+        cardEl.innerHTML = `
+          <div class="combination-card-header">
+            <h5 class="combination-title">${comb.nome}</h5>
+            <button class="btn-star-favorite ${isFav ? 'is-favorite' : ''}" data-id="${comb.id}" data-fav="${isFav}" title="${isFav ? 'Remover dos Favoritos' : 'Favoritar'}">
+              ⭐
+            </button>
+          </div>
+          <div class="combination-preview-box">
+            ${miniItemsHtml}
+          </div>
+          <div class="combination-card-actions">
+            <button class="btn btn-secondary btn-sm btn-load-combination" data-id="${comb.id}">
+              <i data-lucide="external-link" class="icon"></i>
+              <span>Carregar</span>
+            </button>
+            <button class="btn btn-secondary btn-sm btn-delete-combination" data-id="${comb.id}">
+              <i data-lucide="trash-2" class="icon"></i>
+            </button>
+          </div>
+        `;
+
+        // Event Listener para Favoritar (Togglamento de is_favorite na tabela public.combinacoes)
+        const starBtn = cardEl.querySelector('.btn-star-favorite');
+        if (starBtn) {
+          starBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const currentFav = starBtn.getAttribute('data-fav') === 'true';
+            const newFav = !currentFav;
+
+            // Atualização Otimista da Interface
+            starBtn.setAttribute('data-fav', newFav.toString());
+            if (newFav) {
+              starBtn.classList.add('is-favorite');
+            } else {
+              starBtn.classList.remove('is-favorite');
+            }
+
+            const { error: updateErr } = await supabaseClient
+              .from('combinacoes')
+              .update({ is_favorite: newFav })
+              .eq('id', comb.id);
+
+            if (updateErr) {
+              console.error('Erro ao atualizar favorito:', updateErr);
+              // Reverte interface se falhou
+              starBtn.setAttribute('data-fav', currentFav.toString());
+              if (currentFav) {
+                starBtn.classList.add('is-favorite');
+              } else {
+                starBtn.classList.remove('is-favorite');
+              }
+            }
+          });
+        }
+
+        // Event Listener para Carregar no Canvas
+        const btnLoadComb = cardEl.querySelector('.btn-load-combination');
+        if (btnLoadComb) {
+          btnLoadComb.addEventListener('click', () => {
+            if (Array.isArray(comb.canvas_state)) {
+              canvasItems = JSON.parse(JSON.stringify(comb.canvas_state));
+              selectedItemId = null;
+              if (boardOutfitNameInput) boardOutfitNameInput.value = comb.nome;
+              renderCanvas();
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          });
+        }
+
+        // Event Listener para Excluir Combinação
+        const btnDeleteComb = cardEl.querySelector('.btn-delete-combination');
+        if (btnDeleteComb) {
+          btnDeleteComb.addEventListener('click', async () => {
+            if (confirm(`Deseja excluir a combinação "${comb.nome}"?`)) {
+              const { error: delErr } = await supabaseClient
+                .from('combinacoes')
+                .delete()
+                .eq('id', comb.id);
+
+              if (delErr) {
+                alert(translateSupabaseError(delErr));
+              } else {
+                await loadSavedCombinations();
+              }
+            }
+          });
+        }
+
+        savedCombinationsList.appendChild(cardEl);
+      });
+
+      refreshIcons();
+    } catch (err) {
+      console.error('Erro ao renderizar combinações salvas:', err);
+    }
+  };
 });
