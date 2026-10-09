@@ -21,8 +21,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    env:
-      VITE_HUGGINGFACE_API_KEY: ${{ secrets.VITE_HUGGINGFACE_API_KEY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
