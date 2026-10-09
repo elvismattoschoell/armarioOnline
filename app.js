@@ -1,5 +1,5 @@
 import { supabaseClient } from './supabase.js';
-import { getLanguage, setLanguage, t, translateSupabaseError, updateDOMTranslations } from './i18n.js';
+import { getLanguage, setLanguage, t, translateSupabaseError, updateDOMTranslations, getCategoryTranslation } from './i18n.js';
 
 // Estado Global do Usuário Atual
 let currentUser = null;
@@ -105,6 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateDOMTranslations();
         if (currentUser) {
           updateUserSettingsDisplay();
+          loadWardrobeItems();
         }
         refreshIcons();
       }
@@ -1225,38 +1226,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Helper para tradução de categorias de roupas
-  const categoryKeyMap = {
-    'camiseta': 'category_camiseta',
-    'camisa': 'category_camisa',
-    'casaco': 'category_casaco',
-    'jaqueta': 'category_jaqueta',
-    'moletom': 'category_moletom',
-    'calça': 'category_calca',
-    'calca': 'category_calca',
-    'bermuda / calções': 'category_bermuda',
-    'bermuda / calcoes': 'category_bermuda',
-    'bermuda': 'category_bermuda',
-    'saia': 'category_saia',
-    'vestido': 'category_vestido',
-    'calçado / tênis': 'category_calcado',
-    'calcado / tenis': 'category_calcado',
-    'calcado': 'category_calcado',
-    'acessório': 'category_acessorio',
-    'acessorio': 'category_acessorio',
-    'chapéu / boné': 'category_chapeu',
-    'chapeu / bone': 'category_chapeu',
-    'chapeu': 'category_chapeu',
-    'outros': 'category_outros'
-  };
-
-  const getCategoryTranslation = (catName) => {
-    if (!catName) return t('category_outros');
-    const lower = catName.trim().toLowerCase();
-    const key = categoryKeyMap[lower];
-    return key ? t(key) : catName;
-  };
-
   // Atualizar Datalist Autocomplete de Categorias
   const updateCategoriesDatalist = (existingCategories) => {
     if (!categoriesDatalist) return;
@@ -1279,11 +1248,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       new Set([...defaultCategories, ...existingCategories.filter(Boolean)])
     );
 
-    categoriesDatalist.innerHTML = rawList
-      .map(cat => {
-        const translated = getCategoryTranslation(cat);
-        return `<option value="${translated}"></option>`;
-      })
+    const translatedSet = new Set(rawList.map(cat => getCategoryTranslation(cat)));
+
+    categoriesDatalist.innerHTML = Array.from(translatedSet)
+      .map(translated => `<option value="${translated}"></option>`)
       .join('');
   };
 
