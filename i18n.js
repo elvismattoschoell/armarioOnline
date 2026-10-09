@@ -306,7 +306,7 @@ export const translations = {
     btn_removing_bg: "Removing bg (AI)...",
     bg_removed_success: "Background removed with AI successfully!",
     bg_removal_error: "Error removing background with AI.",
-    bg_removal_fallback: "A IA falhou, use o recorte manual",
+    bg_removal_fallback: "AI failed, use manual cropping",
     btn_choose_photo: "Choose Photo",
 
     // Categorias de Roupas
@@ -486,7 +486,7 @@ export const translations = {
     btn_removing_bg: "Удаление фона (ИИ)...",
     bg_removed_success: "Фон успешно удален с помощью ИИ!",
     bg_removal_error: "Ошибка при удалении фона с помощью ИИ.",
-    bg_removal_fallback: "A IA falhou, use o recorte manual",
+    bg_removal_fallback: "ИИ не справился, используйте ручную обрезку",
     btn_choose_photo: "Выбрать фото",
 
     // Categorias de Roupas
@@ -582,10 +582,10 @@ const supabaseErrorMessages = {
 };
 
 // Gerenciamento do Idioma Atual
-let currentLang = localStorage.getItem('app_lang') || 'pt';
+let currentLang = (typeof localStorage !== 'undefined' && localStorage.getItem('app_lang')) || 'en';
 
 if (!translations[currentLang]) {
-  currentLang = 'pt';
+  currentLang = 'en';
 }
 
 export const getLanguage = () => currentLang;
@@ -593,15 +593,17 @@ export const getLanguage = () => currentLang;
 export const setLanguage = (lang) => {
   if (translations[lang]) {
     currentLang = lang;
-    localStorage.setItem('app_lang', lang);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('app_lang', lang);
+    }
     return true;
   }
   return false;
 };
 
 export const t = (key, params = {}) => {
-  const langDict = translations[currentLang] || translations.pt;
-  let message = langDict[key] || translations.pt[key] || key;
+  const langDict = translations[currentLang] || translations.en;
+  let message = langDict[key] || translations.en[key] || translations.pt[key] || key;
 
   Object.keys(params).forEach(param => {
     message = message.replace(`{${param}}`, params[param]);
@@ -616,12 +618,120 @@ export const translateSupabaseError = (errorRaw) => {
 
   for (const [key, map] of Object.entries(supabaseErrorMessages)) {
     if (errorMsg.toLowerCase().includes(key.toLowerCase())) {
-      return map[currentLang] || map.pt;
+      return map[currentLang] || map.en || map.pt;
     }
   }
 
   // Se for mensagem customizada ou não mapeada, tenta buscar ou retorna o próprio texto
   return errorMsg || t('supabase_connection_error');
+};
+
+// Mapeamento de Categorias / Tipos de Roupas por Idioma
+export const categoryKeyMap = {
+  // Português
+  'camiseta': 'category_camiseta',
+  'camisa': 'category_camisa',
+  'casaco': 'category_casaco',
+  'jaqueta': 'category_jaqueta',
+  'moletom': 'category_moletom',
+  'calça': 'category_calca',
+  'calca': 'category_calca',
+  'bermuda / calções': 'category_bermuda',
+  'bermuda / calcoes': 'category_bermuda',
+  'bermuda': 'category_bermuda',
+  'calções': 'category_bermuda',
+  'calcoes': 'category_bermuda',
+  'saia': 'category_saia',
+  'vestido': 'category_vestido',
+  'calçado / tênis': 'category_calcado',
+  'calcado / tenis': 'category_calcado',
+  'calçado': 'category_calcado',
+  'calcado': 'category_calcado',
+  'tênis': 'category_calcado',
+  'tenis': 'category_calcado',
+  'acessório': 'category_acessorio',
+  'acessorio': 'category_acessorio',
+  'chapéu / boné': 'category_chapeu',
+  'chapeu / bone': 'category_chapeu',
+  'chapéu': 'category_chapeu',
+  'chapeu': 'category_chapeu',
+  'boné': 'category_chapeu',
+  'bone': 'category_chapeu',
+  'outros': 'category_outros',
+  'outro': 'category_outros',
+
+  // English
+  't-shirt': 'category_camiseta',
+  'tshirt': 'category_camiseta',
+  't shirt': 'category_camiseta',
+  'shirt': 'category_camisa',
+  'coat': 'category_casaco',
+  'jacket': 'category_jaqueta',
+  'hoodie / sweatshirt': 'category_moletom',
+  'hoodie': 'category_moletom',
+  'sweatshirt': 'category_moletom',
+  'pants': 'category_calca',
+  'trousers': 'category_calca',
+  'shorts': 'category_bermuda',
+  'skirt': 'category_saia',
+  'dress': 'category_vestido',
+  'footwear / shoes': 'category_calcado',
+  'footwear': 'category_calcado',
+  'shoes': 'category_calcado',
+  'sneakers': 'category_calcado',
+  'accessory': 'category_acessorio',
+  'accessories': 'category_acessorio',
+  'hat / cap': 'category_chapeu',
+  'hat': 'category_chapeu',
+  'cap': 'category_chapeu',
+  'others': 'category_outros',
+  'other': 'category_outros',
+
+  // Русский
+  'футболка': 'category_camiseta',
+  'рубашка': 'category_camisa',
+  'пальто': 'category_casaco',
+  'куртка': 'category_jaqueta',
+  'толстовка': 'category_moletom',
+  'худи': 'category_moletom',
+  'брюки': 'category_calca',
+  'штаны': 'category_calca',
+  'шорты': 'category_bermuda',
+  'юбка': 'category_saia',
+  'платье': 'category_vestido',
+  'обувь': 'category_calcado',
+  'кроссовки': 'category_calcado',
+  'ботинки': 'category_calcado',
+  'аксессуар': 'category_acessorio',
+  'аксессуары': 'category_acessorio',
+  'головной убор': 'category_chapeu',
+  'шапка': 'category_chapeu',
+  'кепка': 'category_chapeu',
+  'другое': 'category_outros',
+  'прочее': 'category_outros'
+};
+
+// Popula dinamicamente a partir dos dicionários
+Object.keys(translations).forEach(lang => {
+  const dict = translations[lang];
+  Object.keys(dict).forEach(key => {
+    if (key.startsWith('category_')) {
+      const val = dict[key];
+      if (val && typeof val === 'string') {
+        const lower = val.trim().toLowerCase();
+        if (!categoryKeyMap[lower]) {
+          categoryKeyMap[lower] = key;
+        }
+      }
+    }
+  });
+});
+
+export const getCategoryTranslation = (catName) => {
+  if (!catName) return t('category_outros');
+  const lower = catName.trim().toLowerCase();
+  const key = categoryKeyMap[lower];
+  return key ? t(key) : catName;
 };
 
 // Atualiza dinamicamente elementos da página marcados com data-i18n
