@@ -558,6 +558,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnRemoveBg = document.getElementById('btn-remove-bg');
   const btnInvertSelection = document.getElementById('btn-invert-selection');
   const btnCropImage = document.getElementById('btn-crop-image');
+  const btnEraserDirect = document.getElementById('btn-eraser-direct');
   const btnUndoOriginal = document.getElementById('btn-undo-original');
   const imageProcessingActions = document.getElementById('image-processing-actions');
 
@@ -580,10 +581,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   let isDrawing = false;
   let pathPoints = [];
   let baseEditorImage = null;
+  let offscreenCanvas = null;
+  let lastCoord = null;
 
   const closeCanvasEditor = () => {
     pathPoints = [];
     isDrawing = false;
+    lastCoord = null;
+    offscreenCanvas = null;
     if (cropCanvasControls) cropCanvasControls.style.display = 'none';
     if (cropCanvasEditor) cropCanvasEditor.style.display = 'none';
     if (imageProcessingActions) imageProcessingActions.style.display = 'flex';
@@ -617,6 +622,63 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Helper para aplicar máscara Alpha preservando 100% os canais RGB originais da imagem
+  const applyAlphaMaskFromBlob = (origSrc, maskBlob) => {
+    return new Promise((resolve, reject) => {
+      const origImg = new Image();
+      origImg.crossOrigin = 'Anonymous';
+      origImg.onload = () => {
+        const maskImg = new Image();
+        maskImg.crossOrigin = 'Anonymous';
+        const maskUrl = URL.createObjectURL(maskBlob);
+        maskImg.onload = () => {
+          const width = origImg.naturalWidth || origImg.width;
+          const height = origImg.naturalHeight || origImg.height;
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(origImg, 0, 0, width, height);
+          const origData = ctx.getImageData(0, 0, width, height);
+
+          const maskCanvas = document.createElement('canvas');
+          maskCanvas.width = width;
+          maskCanvas.height = height;
+          const maskCtx = maskCanvas.getContext('2d');
+          maskCtx.drawImage(maskImg, 0, 0, width, height);
+          const maskData = maskCtx.getImageData(0, 0, width, height);
+
+          const oPixels = origData.data;
+          const mPixels = maskData.data;
+
+          // Aplica APENAS o canal Alpha da máscara, mantendo R, G e B 100% intactos
+          for (let i = 0; i < oPixels.length; i += 4) {
+            oPixels[i + 3] = mPixels[i + 3];
+          }
+
+          ctx.putImageData(origData, 0, 0);
+          URL.revokeObjectURL(maskUrl);
+
+          canvas.toBlob((finalBlob) => {
+            if (finalBlob) {
+              resolve(finalBlob);
+            } else {
+              reject(new Error('Falha ao gerar blob do canvas'));
+            }
+          }, 'image/png');
+        };
+        maskImg.onerror = (err) => {
+          URL.revokeObjectURL(maskUrl);
+          reject(err);
+        };
+        maskImg.src = maskUrl;
+      };
+      origImg.onerror = (err) => reject(err);
+      origImg.src = origSrc;
+    });
+  };
+
   // Remoção de Fundo via IA / Segmentação de Imagem (@imgly/background-removal)
   if (btnRemoveBg) {
     btnRemoveBg.addEventListener('click', async () => {
@@ -639,17 +701,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const removeBackground = bgRemovalModule.removeBackground;
 
         // Executa a remoção de fundo com modelo de IA (ONNX / WebAssembly)
-        const imageSource = pieceImagePreview.src;
-        const blob = await removeBackground(imageSource, {
+        const imageSource = originalImageSrc || pieceImagePreview.src;
+        const rawAiBlob = await removeBackground(imageSource, {
           output: {
             format: 'image/png',
-            quality: 0.9
+            quality: 1.0
           }
         });
 
-        if (blob) {
-          processedBlob = blob;
-          const newUrl = URL.createObjectURL(blob);
+        if (rawAiBlob) {
+          // Aplica a máscara Alpha sobre a imagem original para preservar RGB, saturação e cores 100% intocadas
+          const compositedBlob = await applyAlphaMaskFromBlob(imageSource, rawAiBlob);
+          processedBlob = compositedBlob;
+          const newUrl = URL.createObjectURL(compositedBlob);
           pieceImagePreview.src = newUrl;
           showPieceModalMessage(t('bg_removed_success'), 'success');
         }
@@ -767,14 +831,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Redesenhar a imagem base e a linha do laço no canvas
-  const redrawCanvasEditor = () => {
-    if (!cropCanvasEditor || !baseEditorImage) return;
+  // Redesenhar a imagem base e elementos visuais no canvas
+  const redrawCanvasEditor = (cursorCoords = null) => {
+    if (!cropCanvasEditor || !offscreenCanvas) return;
     const ctx = cropCanvasEditor.getContext('2d');
     ctx.clearRect(0, 0, cropCanvasEditor.width, cropCanvasEditor.height);
-    ctx.drawImage(baseEditorImage, 0, 0);
+    ctx.drawImage(offscreenCanvas, 0, 0);
 
-    if (pathPoints.length > 0) {
+    // Desenha vetor do laço se estiver usando a ferramenta Lasso
+    if (currentTool === 'lasso' && pathPoints.length > 0) {
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
@@ -804,6 +869,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       ctx.restore();
     }
+
+    // Desenha cursor indicador da Borracha
+    if (currentTool === 'eraser' && cursorCoords) {
+      const thick = parseInt(brushSizeSlider ? brushSizeSlider.value : '20', 10);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cursorCoords.x, cursorCoords.y, thick / 2, 0, Math.PI * 2);
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cursorCoords.x, cursorCoords.y, thick / 2 + 1, 0, Math.PI * 2);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
   };
 
   // Obter coordenadas de clique/toque mapeadas para as dimensões internas do canvas
@@ -819,48 +901,67 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
   };
 
+  const applyEraserStroke = (p1, p2) => {
+    if (!offscreenCanvas) return;
+    const offCtx = offscreenCanvas.getContext('2d');
+    const thick = parseInt(brushSizeSlider ? brushSizeSlider.value : '20', 10);
+
+    offCtx.save();
+    offCtx.globalCompositeOperation = 'destination-out';
+    offCtx.lineWidth = thick;
+    offCtx.lineCap = 'round';
+    offCtx.lineJoin = 'round';
+
+    offCtx.beginPath();
+    if (p1) {
+      offCtx.moveTo(p1.x, p1.y);
+      offCtx.lineTo(p2.x, p2.y);
+    } else {
+      offCtx.arc(p2.x, p2.y, thick / 2, 0, Math.PI * 2);
+    }
+    offCtx.stroke();
+    offCtx.restore();
+  };
+
   if (cropCanvasEditor) {
     const startDraw = (e) => {
       isDrawing = true;
       const coords = getCanvasCoords(e, cropCanvasEditor);
+      lastCoord = coords;
 
       if (currentTool === 'lasso') {
         pathPoints = [coords];
-        redrawCanvasEditor();
+        redrawCanvasEditor(coords);
       } else if (currentTool === 'eraser') {
-        const ctx = cropCanvasEditor.getContext('2d');
-        const thick = parseInt(brushSizeSlider ? brushSizeSlider.value : '10', 10);
-        ctx.save();
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.beginPath();
-        ctx.arc(coords.x, coords.y, thick / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        applyEraserStroke(null, coords);
+        redrawCanvasEditor(coords);
       }
     };
 
     const moveDraw = (e) => {
-      if (!isDrawing) return;
-      if (e.touches) e.preventDefault();
       const coords = getCanvasCoords(e, cropCanvasEditor);
+      if (e.touches && isDrawing) e.preventDefault();
 
-      if (currentTool === 'lasso') {
-        pathPoints.push(coords);
-        redrawCanvasEditor();
-      } else if (currentTool === 'eraser') {
-        const ctx = cropCanvasEditor.getContext('2d');
-        const thick = parseInt(brushSizeSlider ? brushSizeSlider.value : '10', 10);
-        ctx.save();
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.beginPath();
-        ctx.arc(coords.x, coords.y, thick / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+      if (isDrawing) {
+        if (currentTool === 'lasso') {
+          pathPoints.push(coords);
+          redrawCanvasEditor(coords);
+        } else if (currentTool === 'eraser') {
+          applyEraserStroke(lastCoord, coords);
+          lastCoord = coords;
+          redrawCanvasEditor(coords);
+        }
+      } else {
+        if (currentTool === 'eraser') {
+          redrawCanvasEditor(coords);
+        }
       }
     };
 
     const stopDraw = () => {
       isDrawing = false;
+      lastCoord = null;
+      redrawCanvasEditor();
     };
 
     cropCanvasEditor.addEventListener('mousedown', startDraw);
@@ -873,30 +974,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     cropCanvasEditor.addEventListener('touchend', stopDraw);
   }
 
-  // Abrir o Editor de Recorte Livre
+  // Inicializar o Editor de Canvas em modo Laço ou Borracha
+  const openCanvasEditorWithTool = (toolName) => {
+    if (!pieceImagePreview || !pieceImagePreview.src) return;
+
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      baseEditorImage = img;
+      pathPoints = [];
+      isDrawing = false;
+      lastCoord = null;
+      currentTool = toolName;
+
+      cropCanvasEditor.width = img.naturalWidth || img.width;
+      cropCanvasEditor.height = img.naturalHeight || img.height;
+
+      offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = cropCanvasEditor.width;
+      offscreenCanvas.height = cropCanvasEditor.height;
+      const offCtx = offscreenCanvas.getContext('2d');
+      offCtx.drawImage(img, 0, 0);
+
+      if (toolName === 'lasso') {
+        if (btnToolLasso) btnToolLasso.classList.add('active-tool');
+        if (btnToolEraser) btnToolEraser.classList.remove('active-tool');
+      } else {
+        if (btnToolEraser) btnToolEraser.classList.add('active-tool');
+        if (btnToolLasso) btnToolLasso.classList.remove('active-tool');
+      }
+
+      redrawCanvasEditor();
+
+      if (pieceImagePreview) pieceImagePreview.style.display = 'none';
+      if (imageProcessingActions) imageProcessingActions.style.display = 'none';
+      if (cropCanvasEditor) cropCanvasEditor.style.display = 'block';
+      if (cropCanvasControls) cropCanvasControls.style.display = 'flex';
+      refreshIcons();
+    };
+    img.src = pieceImagePreview.src;
+  };
+
   if (btnCropImage) {
     btnCropImage.addEventListener('click', () => {
-      if (!pieceImagePreview || !pieceImagePreview.src) return;
+      openCanvasEditorWithTool('lasso');
+    });
+  }
 
-      const img = new Image();
-      img.crossOrigin = 'Anonymous';
-      img.onload = () => {
-        baseEditorImage = img;
-        pathPoints = [];
-        isDrawing = false;
-
-        cropCanvasEditor.width = img.width;
-        cropCanvasEditor.height = img.height;
-
-        redrawCanvasEditor();
-
-        if (pieceImagePreview) pieceImagePreview.style.display = 'none';
-        if (imageProcessingActions) imageProcessingActions.style.display = 'none';
-        if (cropCanvasEditor) cropCanvasEditor.style.display = 'block';
-        if (cropCanvasControls) cropCanvasControls.style.display = 'flex';
-        refreshIcons();
-      };
-      img.src = pieceImagePreview.src;
+  if (btnEraserDirect) {
+    btnEraserDirect.addEventListener('click', () => {
+      openCanvasEditorWithTool('eraser');
     });
   }
 
@@ -904,50 +1031,68 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnClearTrace) {
     btnClearTrace.addEventListener('click', () => {
       pathPoints = [];
-      if (baseEditorImage && cropCanvasEditor) {
+      if (baseEditorImage && offscreenCanvas) {
+        const offCtx = offscreenCanvas.getContext('2d');
+        offCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        offCtx.drawImage(baseEditorImage, 0, 0);
         redrawCanvasEditor();
       }
     });
   }
 
-  // Confirmar Recorte Livre
+  // Confirmar Edição/Borracha/Recorte Livre preservando 100% RGB da imagem original
   if (btnConfirmCrop) {
-    btnConfirmCrop.addEventListener('click', () => {
-      if (!cropCanvasEditor || !baseEditorImage) return;
+    btnConfirmCrop.addEventListener('click', async () => {
+      if (!cropCanvasEditor || !baseEditorImage || !offscreenCanvas) return;
 
       if (pathPoints.length > 2 && currentTool === 'lasso') {
-        const outCanvas = document.createElement('canvas');
-        outCanvas.width = baseEditorImage.width;
-        outCanvas.height = baseEditorImage.height;
-        const outCtx = outCanvas.getContext('2d');
+        const width = baseEditorImage.naturalWidth || baseEditorImage.width;
+        const height = baseEditorImage.naturalHeight || baseEditorImage.height;
 
-        outCtx.beginPath();
-        outCtx.moveTo(pathPoints[0].x, pathPoints[0].y);
+        const lassoMaskCanvas = document.createElement('canvas');
+        lassoMaskCanvas.width = width;
+        lassoMaskCanvas.height = height;
+        const lCtx = lassoMaskCanvas.getContext('2d');
+
+        lCtx.beginPath();
+        lCtx.moveTo(pathPoints[0].x, pathPoints[0].y);
         for (let i = 1; i < pathPoints.length; i++) {
-          outCtx.lineTo(pathPoints[i].x, pathPoints[i].y);
+          lCtx.lineTo(pathPoints[i].x, pathPoints[i].y);
         }
-        outCtx.closePath();
-        outCtx.clip();
+        lCtx.closePath();
+        lCtx.fillStyle = '#ffffff';
+        lCtx.fill();
 
-        outCtx.drawImage(baseEditorImage, 0, 0);
-
-        outCanvas.toBlob((blob) => {
-          if (blob) {
-            processedBlob = blob;
-            const croppedUrl = URL.createObjectURL(blob);
-            closeCanvasEditor();
-            pieceImagePreview.src = croppedUrl;
-            showPieceModalMessage('Recorte livre aplicado com sucesso!', 'success');
+        lassoMaskCanvas.toBlob(async (maskBlob) => {
+          if (maskBlob) {
+            try {
+              const imageSource = originalImageSrc || pieceImagePreview.src;
+              const compositedBlob = await applyAlphaMaskFromBlob(imageSource, maskBlob);
+              processedBlob = compositedBlob;
+              const croppedUrl = URL.createObjectURL(compositedBlob);
+              closeCanvasEditor();
+              pieceImagePreview.src = croppedUrl;
+              showPieceModalMessage('Recorte livre aplicado com sucesso!', 'success');
+            } catch (err) {
+              console.error('Erro ao aplicar corte:', err);
+            }
           }
         }, 'image/png');
       } else {
-        cropCanvasEditor.toBlob((blob) => {
-          if (blob) {
-            processedBlob = blob;
-            const croppedUrl = URL.createObjectURL(blob);
-            closeCanvasEditor();
-            pieceImagePreview.src = croppedUrl;
-            showPieceModalMessage('Recorte aplicado com sucesso!', 'success');
+        // Se a edição foi feita via Borracha ou sem laço definido
+        offscreenCanvas.toBlob(async (maskBlob) => {
+          if (maskBlob) {
+            try {
+              const imageSource = originalImageSrc || pieceImagePreview.src;
+              const compositedBlob = await applyAlphaMaskFromBlob(imageSource, maskBlob);
+              processedBlob = compositedBlob;
+              const croppedUrl = URL.createObjectURL(compositedBlob);
+              closeCanvasEditor();
+              pieceImagePreview.src = croppedUrl;
+              showPieceModalMessage('Edição/Borracha aplicada com sucesso!', 'success');
+            } catch (err) {
+              console.error('Erro ao confirmar edição:', err);
+            }
           }
         }, 'image/png');
       }
