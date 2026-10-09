@@ -680,7 +680,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   };
 
-  // Remoção de Fundo via Hugging Face Inference API (briaai/RMBG-1.4) / Edge Function
+  // Remoção de Fundo via @imgly/background-removal (com fallback gracioso)
   if (btnRemoveBg) {
     btnRemoveBg.addEventListener('click', async () => {
       if (!pieceImagePreview || !pieceImagePreview.src) return;
@@ -701,44 +701,56 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       try {
         let responseBlob = null;
-        let hfApiKey = '';
 
+        // 1. Tenta remoção de fundo de alta qualidade via @imgly/background-removal
         try {
-          if (typeof import.meta !== 'undefined' && import.meta && import.meta.env) {
-            hfApiKey = import.meta.env.VITE_HUGGINGFACE_API_KEY || '';
+          const imglyModule = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/+esm');
+          const removeBackground = imglyModule.default || imglyModule.removeBackground;
+          if (typeof removeBackground === 'function') {
+            responseBlob = await removeBackground(imageSource);
           }
-        } catch (e) {
-          hfApiKey = '';
+        } catch (imglyErr) {
+          console.warn("Falha ao executar @imgly/background-removal:", imglyErr);
         }
 
-        // Tenta chamada direta à API de Inferência do Hugging Face (briaai/RMBG-1.4)
-        if (hfApiKey) {
+        // 2. Fallback via Hugging Face Inference API se @imgly falhar
+        if (!responseBlob) {
+          let hfApiKey = '';
           try {
-            const imgRes = await fetch(imageSource);
-            const imgBlob = await imgRes.blob();
-
-            const hfRes = await fetch("https://api-inference.huggingface.co/models/briaai/RMBG-1.4", {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${hfApiKey}`,
-                "Content-Type": "application/octet-stream"
-              },
-              body: imgBlob
-            });
-
-            if (hfRes.ok) {
-              const resBlob = await hfRes.blob();
-              // Se não for um fallback header e o tipo for image
-              if (!hfRes.headers.get("X-Fallback") && resBlob.type.includes("image")) {
-                responseBlob = resBlob;
-              }
+            if (typeof import.meta !== 'undefined' && import.meta && import.meta.env) {
+              hfApiKey = import.meta.env.VITE_HUGGINGFACE_API_KEY || '';
             }
-          } catch (hfErr) {
-            console.warn("Falha ao chamar Hugging Face diretamente:", hfErr);
+          } catch (e) {
+            hfApiKey = '';
+          }
+
+          if (hfApiKey) {
+            try {
+              const imgRes = await fetch(imageSource);
+              const imgBlob = await imgRes.blob();
+
+              const hfRes = await fetch("https://api-inference.huggingface.co/models/briaai/RMBG-1.4", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${hfApiKey}`,
+                  "Content-Type": "application/octet-stream"
+                },
+                body: imgBlob
+              });
+
+              if (hfRes.ok) {
+                const resBlob = await hfRes.blob();
+                if (!hfRes.headers.get("X-Fallback") && resBlob.type.includes("image")) {
+                  responseBlob = resBlob;
+                }
+              }
+            } catch (hfErr) {
+              console.warn("Falha ao chamar Hugging Face:", hfErr);
+            }
           }
         }
 
-        // Fallback para Supabase Edge Function
+        // 3. Fallback para Supabase Edge Function
         if (!responseBlob && supabaseClient && supabaseClient.functions) {
           try {
             const { data, error } = await supabaseClient.functions.invoke('remove-background', {
@@ -753,13 +765,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (responseBlob) {
+          // Garante que APENAS o canal Alpha seja aplicado, preservando os canais RGB originais intactos
           const compositedBlob = await applyAlphaMaskFromBlob(imageSource, responseBlob);
           processedBlob = compositedBlob;
           const newUrl = URL.createObjectURL(compositedBlob);
           pieceImagePreview.src = newUrl;
           showPieceModalMessage(t('bg_removed_success'), 'success');
         } else {
-          // Graceful Fallback: Não quebrar nem exibir erro vermelho!
           pieceImagePreview.src = imageSource;
           showPieceModalMessage(t('bg_removal_fallback'), 'info');
         }
