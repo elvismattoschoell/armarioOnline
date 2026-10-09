@@ -680,7 +680,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   };
 
-  // Remoção de Fundo via Supabase Edge Function (briaai/RMBG-1.4)
+  // Remoção de Fundo via Hugging Face Inference API (briaai/RMBG-1.4) / Edge Function
   if (btnRemoveBg) {
     btnRemoveBg.addEventListener('click', async () => {
       if (!pieceImagePreview || !pieceImagePreview.src) return;
@@ -697,34 +697,58 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnRemoveBg.querySelector('span').textContent = t('btn_removing_bg');
       }
 
-      try {
-        const imageSource = originalImageSrc || pieceImagePreview.src;
-        let responseBlob = null;
+      const imageSource = originalImageSrc || pieceImagePreview.src;
 
-        if (supabaseClient && supabaseClient.functions) {
-          const { data, error } = await supabaseClient.functions.invoke('remove-background', {
-            body: { image: imageSource }
-          });
-          if (!error && data) {
-            responseBlob = data instanceof Blob ? data : new Blob([data], { type: 'image/png' });
+      try {
+        let responseBlob = null;
+        let hfApiKey = '';
+
+        try {
+          if (typeof import.meta !== 'undefined' && import.meta && import.meta.env) {
+            hfApiKey = import.meta.env.VITE_HUGGINGFACE_API_KEY || '';
+          }
+        } catch (e) {
+          hfApiKey = '';
+        }
+
+        // Tenta chamada direta à API de Inferência do Hugging Face (briaai/RMBG-1.4)
+        if (hfApiKey) {
+          try {
+            const imgRes = await fetch(imageSource);
+            const imgBlob = await imgRes.blob();
+
+            const hfRes = await fetch("https://api-inference.huggingface.co/models/briaai/RMBG-1.4", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${hfApiKey}`,
+                "Content-Type": "application/octet-stream"
+              },
+              body: imgBlob
+            });
+
+            if (hfRes.ok) {
+              const resBlob = await hfRes.blob();
+              // Se não for um fallback header e o tipo for image
+              if (!hfRes.headers.get("X-Fallback") && resBlob.type.includes("image")) {
+                responseBlob = resBlob;
+              }
+            }
+          } catch (hfErr) {
+            console.warn("Falha ao chamar Hugging Face diretamente:", hfErr);
           }
         }
 
-        if (!responseBlob) {
-          // Fallback HTTP request to Supabase Edge Function endpoint directly or process
-          const SUPABASE_URL = 'https://aetjnkhkphdomjufawfh.supabase.co';
-          const functionUrl = `${SUPABASE_URL}/functions/v1/remove-background`;
-          const res = await fetch(functionUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': 'sb_publishable_fJmTV_HEH0EKff1OSUruAw_xuE8j9fa',
-              'Authorization': `Bearer sb_publishable_fJmTV_HEH0EKff1OSUruAw_xuE8j9fa`
-            },
-            body: JSON.stringify({ image: imageSource })
-          });
-          if (res.ok) {
-            responseBlob = await res.blob();
+        // Fallback para Supabase Edge Function
+        if (!responseBlob && supabaseClient && supabaseClient.functions) {
+          try {
+            const { data, error } = await supabaseClient.functions.invoke('remove-background', {
+              body: { image: imageSource }
+            });
+            if (!error && data) {
+              responseBlob = data instanceof Blob ? data : new Blob([data], { type: 'image/png' });
+            }
+          } catch (edgeErr) {
+            console.warn("Falha ao chamar Edge Function:", edgeErr);
           }
         }
 
@@ -735,11 +759,16 @@ document.addEventListener('DOMContentLoaded', async () => {
           pieceImagePreview.src = newUrl;
           showPieceModalMessage(t('bg_removed_success'), 'success');
         } else {
-          throw new Error('Falha ao processar imagem no backend.');
+          // Graceful Fallback: Não quebrar nem exibir erro vermelho!
+          pieceImagePreview.src = imageSource;
+          showPieceModalMessage(t('bg_removal_fallback'), 'info');
         }
       } catch (err) {
-        console.error('Erro na remoção de fundo via Edge Function:', err);
-        showPieceModalMessage(t('bg_removal_error'), 'error');
+        console.warn('Erro na remoção de fundo:', err);
+        if (pieceImagePreview && imageSource) {
+          pieceImagePreview.src = imageSource;
+        }
+        showPieceModalMessage(t('bg_removal_fallback'), 'info');
       } finally {
         btnRemoveBg.disabled = false;
         if (btnRemoveBg.querySelector('span')) {
@@ -1184,6 +1213,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Helper para tradução de categorias de roupas
+  const categoryKeyMap = {
+    'camiseta': 'category_camiseta',
+    'camisa': 'category_camisa',
+    'casaco': 'category_casaco',
+    'jaqueta': 'category_jaqueta',
+    'moletom': 'category_moletom',
+    'calça': 'category_calca',
+    'calca': 'category_calca',
+    'bermuda / calções': 'category_bermuda',
+    'bermuda / calcoes': 'category_bermuda',
+    'bermuda': 'category_bermuda',
+    'saia': 'category_saia',
+    'vestido': 'category_vestido',
+    'calçado / tênis': 'category_calcado',
+    'calcado / tenis': 'category_calcado',
+    'calcado': 'category_calcado',
+    'acessório': 'category_acessorio',
+    'acessorio': 'category_acessorio',
+    'chapéu / boné': 'category_chapeu',
+    'chapeu / bone': 'category_chapeu',
+    'chapeu': 'category_chapeu',
+    'outros': 'category_outros'
+  };
+
+  const getCategoryTranslation = (catName) => {
+    if (!catName) return t('category_outros');
+    const lower = catName.trim().toLowerCase();
+    const key = categoryKeyMap[lower];
+    return key ? t(key) : catName;
+  };
+
   // Atualizar Datalist Autocomplete de Categorias
   const updateCategoriesDatalist = (existingCategories) => {
     if (!categoriesDatalist) return;
@@ -1202,12 +1263,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Chapéu / Boné'
     ];
 
-    const uniqueCategories = Array.from(
+    const rawList = Array.from(
       new Set([...defaultCategories, ...existingCategories.filter(Boolean)])
     );
 
-    categoriesDatalist.innerHTML = uniqueCategories
-      .map(cat => `<option value="${cat.trim()}"></option>`)
+    categoriesDatalist.innerHTML = rawList
+      .map(cat => {
+        const translated = getCategoryTranslation(cat);
+        return `<option value="${translated}"></option>`;
+      })
       .join('');
   };
 
@@ -1266,6 +1330,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       Object.keys(grouped).forEach(categoryName => {
         const items = grouped[categoryName];
+        const translatedCatName = getCategoryTranslation(categoryName);
 
         const groupEl = document.createElement('div');
         groupEl.className = 'category-group';
@@ -1275,8 +1340,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         headerEl.innerHTML = `
           <div class="category-title-area">
             <i data-lucide="tag" class="icon" style="color: var(--primary-color);"></i>
-            <h4 class="category-title">${categoryName}</h4>
-            <span class="category-badge">${categoryName} (${items.length})</span>
+            <h4 class="category-title">${translatedCatName}</h4>
+            <span class="category-badge">${translatedCatName} (${items.length})</span>
           </div>
         `;
 
@@ -1524,6 +1589,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     updatePlaceholderVisibility();
 
     canvasItems.forEach(item => {
+      item.rotation = item.rotation || 0;
+
       const itemEl = document.createElement('div');
       itemEl.className = `canvas-item ${item.id === selectedItemId ? 'selected' : ''}`;
       itemEl.style.left = `${item.x}px`;
@@ -1531,19 +1598,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       itemEl.style.width = `${item.width}px`;
       itemEl.style.height = `${item.height}px`;
       itemEl.style.zIndex = item.zIndex;
+      itemEl.style.transform = `rotate(${item.rotation}deg)`;
       itemEl.setAttribute('data-id', item.id);
 
       itemEl.innerHTML = `
         <img src="${item.image_url}" alt="${item.nome}" class="canvas-item-img">
         <div class="canvas-item-controls">
+          <button class="canvas-ctrl-btn btn-rotate-left" title="Girar Esquerda">↺</button>
           <button class="canvas-ctrl-btn btn-layer-up" title="Avançar Camada">▲</button>
           <button class="canvas-ctrl-btn btn-layer-down" title="Recuar Camada">▼</button>
+          <button class="canvas-ctrl-btn btn-rotate-right" title="Girar Direita">↻</button>
           <button class="canvas-ctrl-btn btn-delete-item" title="Remover Peça">✕</button>
+        </div>
+        <div class="canvas-rotate-handle" title="Girar Peça (Livre)">
+          <i data-lucide="rotate-cw" class="icon-sm" style="width:12px;height:12px;"></i>
         </div>
         <div class="canvas-resize-handle"></div>
       `;
 
-      // Seleção e Arraste
+      // Seleção, Arraste, Redimensionamento e Rotação
       makeCanvasItemInteractive(itemEl, item);
 
       boardCanvas.appendChild(itemEl);
@@ -1571,11 +1644,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }, { passive: true });
 
-    // Botões de Controles de Camada e Deleção
+    // Botões de Controles de Camada, Rotação e Deleção
+    const btnRotateLeft = itemEl.querySelector('.btn-rotate-left');
+    const btnRotateRight = itemEl.querySelector('.btn-rotate-right');
     const btnLayerUp = itemEl.querySelector('.btn-layer-up');
     const btnLayerDown = itemEl.querySelector('.btn-layer-down');
     const btnDeleteItem = itemEl.querySelector('.btn-delete-item');
     const resizeHandle = itemEl.querySelector('.canvas-resize-handle');
+    const rotateHandle = itemEl.querySelector('.canvas-rotate-handle');
+
+    if (btnRotateLeft) {
+      btnRotateLeft.addEventListener('click', (e) => {
+        e.stopPropagation();
+        item.rotation = (item.rotation - 15 + 360) % 360;
+        itemEl.style.transform = `rotate(${item.rotation}deg)`;
+      });
+    }
+
+    if (btnRotateRight) {
+      btnRotateRight.addEventListener('click', (e) => {
+        e.stopPropagation();
+        item.rotation = (item.rotation + 15) % 360;
+        itemEl.style.transform = `rotate(${item.rotation}deg)`;
+      });
+    }
 
     if (btnLayerUp) {
       btnLayerUp.addEventListener('click', (e) => {
@@ -1603,6 +1695,52 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
+    // Lógica de Rotação Livre (Rotate Handle)
+    let isRotating = false;
+
+    if (rotateHandle) {
+      const startRotate = (e) => {
+        e.stopPropagation();
+        isRotating = true;
+
+        document.addEventListener('mousemove', moveRotate);
+        document.addEventListener('mouseup', stopRotate);
+        document.addEventListener('touchmove', moveRotate, { passive: false });
+        document.addEventListener('touchend', stopRotate);
+      };
+
+      const moveRotate = (e) => {
+        if (!isRotating) return;
+        if (e.touches) e.preventDefault();
+
+        const rect = itemEl.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        const radians = Math.atan2(clientY - centerY, clientX - centerX);
+        let degrees = Math.round(radians * (180 / Math.PI));
+
+        // Ajuste de offset da alça
+        degrees = (degrees + 45 + 360) % 360;
+        item.rotation = degrees;
+        itemEl.style.transform = `rotate(${item.rotation}deg)`;
+      };
+
+      const stopRotate = () => {
+        isRotating = false;
+        document.removeEventListener('mousemove', moveRotate);
+        document.removeEventListener('mouseup', stopRotate);
+        document.removeEventListener('touchmove', moveRotate);
+        document.removeEventListener('touchend', stopRotate);
+      };
+
+      rotateHandle.addEventListener('mousedown', startRotate);
+      rotateHandle.addEventListener('touchstart', startRotate, { passive: true });
+    }
+
     // Lógica de Drag & Drop (Arraste)
     let isDragging = false;
     let startX = 0;
@@ -1611,7 +1749,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let initialY = 0;
 
     const startDrag = (e) => {
-      if (e.target === resizeHandle || e.target.closest('.canvas-item-controls')) return;
+      if (e.target === resizeHandle || e.target === rotateHandle || e.target.closest('.canvas-rotate-handle') || e.target.closest('.canvas-item-controls')) return;
       isDragging = true;
 
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -1721,6 +1859,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       y: 50 + (canvasItems.length * 20) % 180,
       width: 150,
       height: 150,
+      rotation: 0,
       zIndex: ++nextZIndex
     };
 
@@ -1842,8 +1981,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const miniLeft = (ci.x || 0) * 0.3;
             const miniTop = (ci.y || 0) * 0.3;
 
+            const miniRot = ci.rotation || 0;
             miniItemsHtml += `
-              <img src="${ci.image_url}" alt="${ci.nome || ''}" style="position: absolute; left: ${miniLeft}px; top: ${miniTop}px; width: ${miniWidth}px; height: ${miniHeight}px; object-fit: contain; z-index: ${ci.zIndex || 1};">
+              <img src="${ci.image_url}" alt="${ci.nome || ''}" style="position: absolute; left: ${miniLeft}px; top: ${miniTop}px; width: ${miniWidth}px; height: ${miniHeight}px; transform: rotate(${miniRot}deg); object-fit: contain; z-index: ${ci.zIndex || 1};">
             `;
           });
         }
@@ -1854,7 +1994,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="combination-card-header">
             <h5 class="combination-title">${comb.nome}</h5>
             <button class="btn-star-favorite ${isFav ? 'is-favorite' : ''}" data-id="${comb.id}" data-fav="${isFav}" title="${isFav ? 'Remover dos Favoritos' : 'Favoritar'}">
-              ⭐
+              <i data-lucide="star" class="icon star-icon"></i>
             </button>
           </div>
           <div class="combination-preview-box">

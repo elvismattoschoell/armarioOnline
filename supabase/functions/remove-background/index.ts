@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const HF_API_TOKEN = Deno.env.get("HF_API_TOKEN") || Deno.env.get("HUGGING_FACE_TOKEN") || "";
+    const HF_API_TOKEN = Deno.env.get("HF_API_TOKEN") || Deno.env.get("HUGGING_FACE_TOKEN") || Deno.env.get("VITE_HUGGINGFACE_API_KEY") || "";
 
     let imageBytes: Uint8Array | null = null;
     const contentType = req.headers.get("content-type") || "";
