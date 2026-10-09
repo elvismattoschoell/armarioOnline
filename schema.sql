@@ -67,3 +67,53 @@ CREATE POLICY "Administrador: Select métricas agregadas"
     USING (
         (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
     );
+
+-- ============================================================================
+-- Tabela 'combinacoes' (Board View / Combinations) e Políticas RLS
+-- ============================================================================
+
+-- 1. Criação da tabela 'combinacoes' caso não exista
+CREATE TABLE IF NOT EXISTS public.combinacoes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    nome VARCHAR(255) NOT NULL,
+    canvas_state JSONB NOT NULL DEFAULT '[]'::jsonb,
+    is_favorite BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Habilitar Row Level Security (RLS) na tabela 'combinacoes'
+ALTER TABLE public.combinacoes ENABLE ROW LEVEL SECURITY;
+
+-- 2. Remoção idempotente de políticas existentes para 'combinacoes'
+DROP POLICY IF EXISTS "Combinacoes: Select próprio" ON public.combinacoes;
+DROP POLICY IF EXISTS "Combinacoes: Insert próprio" ON public.combinacoes;
+DROP POLICY IF EXISTS "Combinacoes: Update próprio" ON public.combinacoes;
+DROP POLICY IF EXISTS "Combinacoes: Delete próprio" ON public.combinacoes;
+
+-- 3. Políticas de RLS para Usuários Comuns na tabela 'combinacoes'
+CREATE POLICY "Combinacoes: Select próprio"
+    ON public.combinacoes
+    FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Combinacoes: Insert próprio"
+    ON public.combinacoes
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Combinacoes: Update próprio"
+    ON public.combinacoes
+    FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Combinacoes: Delete próprio"
+    ON public.combinacoes
+    FOR DELETE
+    TO authenticated
+    USING (auth.uid() = user_id);

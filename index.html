@@ -176,13 +176,57 @@
               <h3 data-i18n="board_title">Montar Combinação de Roupas</h3>
               <p class="flow-subtitle" data-i18n="board_subtitle">Organize e ajuste suas peças no Board Visual.</p>
             </div>
-            <button class="btn btn-secondary" id="btn-close-board">
-              <i data-lucide="arrow-left" class="icon"></i>
-              <span data-i18n="btn_back">Voltar</span>
-            </button>
+            <div class="flow-header-actions">
+              <button class="btn btn-secondary" id="btn-close-board">
+                <i data-lucide="arrow-left" class="icon"></i>
+                <span data-i18n="btn_back">Voltar</span>
+              </button>
+            </div>
           </div>
-          <div class="board-canvas-area">
-            <p data-i18n="board_canvas_text">Área de montagem da combinação (Board Visual).</p>
+
+          <div class="board-editor-layout">
+            <!-- Sidebar / Gaveta de Peças Disponíveis -->
+            <div class="board-sidebar">
+              <h4 class="board-sidebar-title" data-i18n="board_add_items_title">Minhas Peças</h4>
+              <p class="board-sidebar-subtitle" data-i18n="board_add_items_desc">Clique numa peça para adicioná-la ao canvas.</p>
+              <div id="board-items-palette" class="board-items-palette">
+                <!-- Peças do usuário renderizadas aqui -->
+              </div>
+            </div>
+
+            <!-- Área Principal do Canvas Interativo -->
+            <div class="board-main-container">
+              <div class="board-toolbar">
+                <div class="board-save-group">
+                  <input type="text" id="board-outfit-name" class="form-input board-name-input" placeholder="Nome da Combinação (ex: Casual Verão)" data-i18n-placeholder="board_name_placeholder">
+                  <button class="btn btn-primary" id="btn-save-board">
+                    <i data-lucide="save" class="icon"></i>
+                    <span data-i18n="btn_save_board">Salvar Combinação</span>
+                  </button>
+                </div>
+                <div class="board-canvas-actions">
+                  <button class="btn btn-secondary btn-sm" id="btn-clear-board">
+                    <i data-lucide="trash-2" class="icon"></i>
+                    <span data-i18n="btn_clear_canvas">Limpar Canvas</span>
+                  </button>
+                </div>
+              </div>
+
+              <div id="board-canvas" class="board-canvas-viewport">
+                <div id="board-canvas-placeholder" class="board-canvas-placeholder">
+                  <i data-lucide="sparkles" class="icon placeholder-icon"></i>
+                  <p data-i18n="board_canvas_instructions">Selecione peças na barra lateral para começar a montar sua combinação.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Galeria de Combinações Salvas -->
+          <div class="saved-combinations-section">
+            <h4 class="saved-combinations-title" data-i18n="saved_combinations_title">Combinações Salvas</h4>
+            <div id="saved-combinations-list" class="saved-combinations-grid">
+              <!-- Lista de combinações salvas carregada dinamicamente -->
+            </div>
           </div>
         </section>
 
