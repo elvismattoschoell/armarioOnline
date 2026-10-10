@@ -80,6 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const settingsDisplayUsername = document.getElementById('settings-display-username');
   const settingsDisplayEmail = document.getElementById('settings-display-email');
   const languageSelector = document.getElementById('language-selector');
+  const authLanguageSelector = document.getElementById('auth-language-selector');
 
   // Elementos do Modal de Alteração de Senha
   const btnOpenChangePasswordModal = document.getElementById('btn-open-change-password-modal');
@@ -97,18 +98,40 @@ document.addEventListener('DOMContentLoaded', async () => {
   const metricItemsCount = document.getElementById('metric-items-count');
 
   // Configura seletor de idioma de acordo com a preferência atual
-  if (languageSelector) {
-    languageSelector.value = getLanguage();
-    languageSelector.addEventListener('change', (e) => {
-      const selectedLang = e.target.value;
-      if (setLanguage(selectedLang)) {
-        updateDOMTranslations();
-        if (currentUser) {
-          updateUserSettingsDisplay();
-          loadWardrobeItems();
-        }
-        refreshIcons();
+  const syncLanguageSelectors = () => {
+    const currentLang = getLanguage();
+    if (languageSelector) languageSelector.value = currentLang;
+    if (authLanguageSelector) authLanguageSelector.value = currentLang;
+  };
+
+  const handleLanguageChange = (selectedLang) => {
+    if (setLanguage(selectedLang)) {
+      syncLanguageSelectors();
+      updateDOMTranslations();
+      if (signupForm && signupForm.style.display !== 'none') {
+        if (authSubtitleText) authSubtitleText.textContent = t('signup_subtitle');
+      } else {
+        if (authSubtitleText) authSubtitleText.textContent = t('login_subtitle');
       }
+      if (currentUser) {
+        updateUserSettingsDisplay();
+        loadWardrobeItems();
+      }
+      refreshIcons();
+    }
+  };
+
+  syncLanguageSelectors();
+
+  if (languageSelector) {
+    languageSelector.addEventListener('change', (e) => {
+      handleLanguageChange(e.target.value);
+    });
+  }
+
+  if (authLanguageSelector) {
+    authLanguageSelector.addEventListener('change', (e) => {
+      handleLanguageChange(e.target.value);
     });
   }
 
@@ -352,6 +375,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (!username || !email || !password) {
         showAuthMessage(t('fill_all_fields'));
+        return;
+      }
+
+      if (password.length < 6) {
+        showAuthMessage(t('signup_password_placeholder'));
         return;
       }
 
@@ -681,7 +709,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   };
 
-  // Remoção de Fundo via @imgly/background-removal (com fallback gracioso)
+  // Elementos da Barra de Progresso
+  const bgRemoveProgressContainer = document.getElementById('bg-remove-progress-container');
+  const bgRemoveProgressStatus = document.getElementById('bg-remove-progress-status');
+  const bgRemoveProgressPercent = document.getElementById('bg-remove-progress-percent');
+  const bgRemoveProgressFill = document.getElementById('bg-remove-progress-fill');
+
+  const updateBgProgress = (percent, statusText) => {
+    if (bgRemoveProgressContainer) bgRemoveProgressContainer.style.display = 'flex';
+    const rounded = Math.min(100, Math.max(0, Math.round(percent)));
+    if (bgRemoveProgressPercent) bgRemoveProgressPercent.textContent = `${rounded}%`;
+    if (bgRemoveProgressFill) bgRemoveProgressFill.style.width = `${rounded}%`;
+    if (statusText && bgRemoveProgressStatus) {
+      bgRemoveProgressStatus.textContent = statusText;
+    }
+  };
+
+  const hideBgProgress = () => {
+    if (bgRemoveProgressContainer) bgRemoveProgressContainer.style.display = 'none';
+    if (bgRemoveProgressPercent) bgRemoveProgressPercent.textContent = '0%';
+    if (bgRemoveProgressFill) bgRemoveProgressFill.style.width = '0%';
+  };
+
+  // Remoção de Fundo via @imgly/background-removal (com visual progress bar e fallback gracioso)
   if (btnRemoveBg) {
     btnRemoveBg.addEventListener('click', async () => {
       if (!pieceImagePreview || !pieceImagePreview.src) return;
@@ -699,16 +749,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       const imageSource = originalImageSrc || pieceImagePreview.src;
+      updateBgProgress(5, t('bg_removing_progress'));
+
+      // Timer para progresso suave em caso de atraso na resposta
+      let currentSimulated = 5;
+      const progressInterval = setInterval(() => {
+        if (currentSimulated < 85) {
+          currentSimulated += Math.floor(Math.random() * 6) + 2;
+          if (currentSimulated > 85) currentSimulated = 85;
+          updateBgProgress(currentSimulated, t('bg_processing_image'));
+        }
+      }, 300);
 
       try {
         let responseBlob = null;
 
-        // 1. Tenta remoção de fundo de alta qualidade via @imgly/background-removal
+        // 1. Tenta remoção de fundo de alta qualidade via @imgly/background-removal com callback de progresso
         try {
           const imglyModule = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/+esm');
           const removeBackground = imglyModule.default || imglyModule.removeBackground;
           if (typeof removeBackground === 'function') {
-            responseBlob = await removeBackground(imageSource);
+            responseBlob = await removeBackground(imageSource, {
+              progress: (key, current, total) => {
+                if (total && total > 0) {
+                  const p = Math.round((current / total) * 100);
+                  const statusMsg = key.includes('fetch') ? t('bg_downloading_model') : t('bg_processing_image');
+                  updateBgProgress(p, statusMsg);
+                }
+              }
+            });
           }
         } catch (imglyErr) {
           console.warn("Falha ao executar @imgly/background-removal:", imglyErr);
@@ -727,6 +796,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
           if (hfApiKey) {
             try {
+              updateBgProgress(60, t('bg_processing_image'));
               const imgRes = await fetch(imageSource);
               const imgBlob = await imgRes.blob();
 
@@ -754,6 +824,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 3. Fallback para Supabase Edge Function
         if (!responseBlob && supabaseClient && supabaseClient.functions) {
           try {
+            updateBgProgress(75, t('bg_processing_image'));
             const { data, error } = await supabaseClient.functions.invoke('remove-background', {
               body: { image: imageSource }
             });
@@ -765,18 +836,26 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
 
+        clearInterval(progressInterval);
+
         if (responseBlob) {
+          updateBgProgress(90, t('bg_processing_image'));
           // Garante que APENAS o canal Alpha seja aplicado, preservando os canais RGB originais intactos
           const compositedBlob = await applyAlphaMaskFromBlob(imageSource, responseBlob);
           processedBlob = compositedBlob;
           const newUrl = URL.createObjectURL(compositedBlob);
           pieceImagePreview.src = newUrl;
+          updateBgProgress(100, t('bg_removed_success'));
+          setTimeout(hideBgProgress, 1000);
           showPieceModalMessage(t('bg_removed_success'), 'success');
         } else {
+          hideBgProgress();
           pieceImagePreview.src = imageSource;
           showPieceModalMessage(t('bg_removal_fallback'), 'info');
         }
       } catch (err) {
+        clearInterval(progressInterval);
+        hideBgProgress();
         console.warn('Erro na remoção de fundo:', err);
         if (pieceImagePreview && imageSource) {
           pieceImagePreview.src = imageSource;

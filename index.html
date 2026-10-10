@@ -19,6 +19,14 @@
   <div id="auth-view" class="auth-wrapper" style="display: none;">
     <div class="auth-card">
       <div class="auth-header">
+        <div class="auth-lang-picker">
+          <i data-lucide="globe" class="icon-sm" style="width:14px;height:14px;color:var(--text-secondary);"></i>
+          <select id="auth-language-selector" class="auth-lang-select">
+            <option value="pt">PT</option>
+            <option value="en">EN</option>
+            <option value="ru">RU</option>
+          </select>
+        </div>
         <i data-lucide="archive" class="auth-logo-icon"></i>
         <h1 class="auth-title" data-i18n="app_title">Armário Virtual</h1>
         <p class="auth-subtitle" id="auth-subtitle-text" data-i18n="login_subtitle">Acesse sua conta corporativa</p>
@@ -89,6 +97,12 @@
             <button data-view="wardrobe">
               <i data-lucide="shirt" class="icon"></i>
               <span data-i18n="nav_wardrobe">Guarda-Roupa</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button data-view="board">
+              <i data-lucide="sparkles" class="icon"></i>
+              <span data-i18n="nav_combinations">Combinações</span>
             </button>
           </li>
           <li class="nav-item">
@@ -364,6 +378,17 @@
           <div id="image-preview-container" class="image-preview-container" style="display: none;">
             <img id="piece-image-preview" src="" alt="Prévia da peça" class="piece-image-preview">
             <canvas id="crop-canvas-editor" class="crop-canvas-editor" style="display: none;"></canvas>
+
+            <!-- Barra de Progresso de Remoção de Fundo (IA) -->
+            <div id="bg-remove-progress-container" class="bg-remove-progress-container" style="display: none;">
+              <div class="bg-remove-progress-info">
+                <span id="bg-remove-progress-status" class="bg-remove-progress-status" data-i18n="bg_removing_progress">Removendo fundo da imagem...</span>
+                <span id="bg-remove-progress-percent" class="bg-remove-progress-percent">0%</span>
+              </div>
+              <div class="bg-remove-progress-track">
+                <div id="bg-remove-progress-fill" class="bg-remove-progress-fill" style="width: 0%;"></div>
+              </div>
+            </div>
 
             <div id="image-processing-actions" class="image-processing-actions">
               <button type="button" id="btn-remove-bg" class="btn btn-secondary btn-sm" title="Remover Fundo da Imagem">
