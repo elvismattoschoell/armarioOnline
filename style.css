@@ -308,6 +308,30 @@ body {
 .auth-header {
   text-align: center;
   margin-bottom: 28px;
+  position: relative;
+}
+
+.auth-lang-picker {
+  position: absolute;
+  top: -12px;
+  right: -8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.auth-lang-select {
+  background: transparent;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  outline: none;
 }
 
 .auth-logo-icon {
@@ -693,6 +717,52 @@ body {
   background-image: repeating-conic-gradient(#e2e8f0 0% 25%, #ffffff 0% 50%);
   background-size: 16px 16px;
   border-radius: 4px;
+}
+
+.bg-remove-progress-container {
+  width: 100%;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bg-remove-progress-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.bg-remove-progress-status {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bg-remove-progress-percent {
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+.bg-remove-progress-track {
+  width: 100%;
+  height: 8px;
+  background-color: var(--border-color);
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bg-remove-progress-fill {
+  height: 100%;
+  width: 0%;
+  background-color: var(--primary-color);
+  border-radius: 9999px;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .image-processing-actions,
@@ -1301,5 +1371,34 @@ body {
   }
   .board-canvas-viewport {
     height: 380px;
+  }
+  .board-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    width: 100%;
+  }
+  .board-save-group {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
+    gap: 8px;
+  }
+  .board-name-input {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 0.9375rem;
+    box-sizing: border-box;
+  }
+  .board-canvas-actions {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+  .board-canvas-actions .btn {
+    flex: 1;
+    min-height: 44px;
   }
 }
