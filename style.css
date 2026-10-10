@@ -1225,7 +1225,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--text-primary);
   transition: transform 0.15s ease, color 0.15s ease;
 }
 
@@ -1233,15 +1233,15 @@ body {
 .btn-star-favorite svg {
   width: 20px;
   height: 20px;
-  stroke: #94a3b8;
+  stroke: #0f172a;
   fill: transparent;
   transition: all 0.2s ease;
 }
 
 .btn-star-favorite.is-favorite .star-icon,
 .btn-star-favorite.is-favorite svg {
-  stroke: #ca8a04;
-  fill: #eab308;
+  stroke: #0f172a;
+  fill: #0f172a;
 }
 
 .btn-star-favorite:hover {
@@ -1261,8 +1261,31 @@ body {
 .combination-card-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   margin-top: auto;
+}
+
+.combination-card-actions .btn-load-combination {
+  flex: 1;
+}
+
+.combination-card-actions .btn-icon-sm {
+  padding: 6px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.combination-card-actions .icon,
+.combination-card-actions svg,
+.btn-icon-sm svg {
+  width: 16px;
+  height: 16px;
+  max-width: 16px;
+  max-height: 16px;
 }
 
 @media (max-width: 767px) {

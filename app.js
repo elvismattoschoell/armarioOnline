@@ -1638,6 +1638,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.stopPropagation();
         item.rotation = (item.rotation - 15 + 360) % 360;
         itemEl.style.transform = `rotate(${item.rotation}deg)`;
+        if (rotateHandle) rotateHandle.title = `Girar Peça (${item.rotation}°)`;
       });
     }
 
@@ -1646,6 +1647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.stopPropagation();
         item.rotation = (item.rotation + 15) % 360;
         itemEl.style.transform = `rotate(${item.rotation}deg)`;
+        if (rotateHandle) rotateHandle.title = `Girar Peça (${item.rotation}°)`;
       });
     }
 
@@ -1693,9 +1695,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!isRotating) return;
         if (e.touches) e.preventDefault();
 
-        const rect = itemEl.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
+        const canvasRect = boardCanvas ? boardCanvas.getBoundingClientRect() : itemEl.parentElement.getBoundingClientRect();
+        const centerX = canvasRect.left + item.x + item.width / 2;
+        const centerY = canvasRect.top + item.y + item.height / 2;
 
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -1707,6 +1709,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         degrees = (degrees + 45 + 360) % 360;
         item.rotation = degrees;
         itemEl.style.transform = `rotate(${item.rotation}deg)`;
+        if (rotateHandle) rotateHandle.title = `Girar Peça (${item.rotation}°)`;
       };
 
       const stopRotate = () => {
@@ -1868,6 +1871,163 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Helper para renderizar canvas centralizado, escalado e alinhado de combinação
+  const renderCombinationToCanvas = async (items, targetWidth = 800, targetHeight = 600, options = {}) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+
+    const bgColor = options.backgroundColor !== undefined ? options.backgroundColor : '#ffffff';
+    if (bgColor) {
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return canvas;
+    }
+
+    // Calcula a caixa delimitadora (bounding box) de todos os itens considerando a rotação
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    items.forEach(item => {
+      const w = item.width || 150;
+      const h = item.height || 150;
+      const x = item.x || 0;
+      const y = item.y || 0;
+      const rotRad = ((item.rotation || 0) * Math.PI) / 180;
+
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+
+      const localCorners = [
+        { dx: -w / 2, dy: -h / 2 },
+        { dx: w / 2, dy: -h / 2 },
+        { dx: w / 2, dy: h / 2 },
+        { dx: -w / 2, dy: h / 2 }
+      ];
+
+      localCorners.forEach(corner => {
+        const rotatedX = cx + (corner.dx * Math.cos(rotRad) - corner.dy * Math.sin(rotRad));
+        const rotatedY = cy + (corner.dx * Math.sin(rotRad) + corner.dy * Math.cos(rotRad));
+
+        if (rotatedX < minX) minX = rotatedX;
+        if (rotatedX > maxX) maxX = rotatedX;
+        if (rotatedY < minY) minY = rotatedY;
+        if (rotatedY > maxY) maxY = rotatedY;
+      });
+    });
+
+    if (minX === Infinity || maxX === -Infinity) {
+      return canvas;
+    }
+
+    const contentW = Math.max(1, maxX - minX);
+    const contentH = Math.max(1, maxY - minY);
+    const contentCX = (minX + maxX) / 2;
+    const contentCY = (minY + maxY) / 2;
+
+    const padding = options.padding !== undefined ? options.padding : Math.min(targetWidth, targetHeight) * 0.08;
+    const availW = Math.max(1, targetWidth - padding * 2);
+    const availH = Math.max(1, targetHeight - padding * 2);
+
+    const scale = Math.min(availW / contentW, availH / contentH);
+
+    const targetCX = targetWidth / 2;
+    const targetCY = targetHeight / 2;
+
+    // Ordena os itens por zIndex
+    const sortedItems = [...items].sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
+
+    // Pré-carrega as imagens dos itens
+    const loadedImages = await Promise.all(
+      sortedItems.map(item => new Promise(resolve => {
+        if (!item.image_url) return resolve({ item, img: null });
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => resolve({ item, img });
+        img.onerror = () => resolve({ item, img: null });
+        img.src = item.image_url;
+      }))
+    );
+
+    loadedImages.forEach(({ item, img }) => {
+      if (!img) return;
+
+      const w = item.width || 150;
+      const h = item.height || 150;
+      const x = item.x || 0;
+      const y = item.y || 0;
+
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+
+      const relCX = cx - contentCX;
+      const relCY = cy - contentCY;
+
+      const destCX = targetCX + relCX * scale;
+      const destCY = targetCY + relCY * scale;
+
+      const destW = w * scale;
+      const destH = h * scale;
+
+      ctx.save();
+      ctx.translate(destCX, destCY);
+      if (item.rotation) {
+        ctx.rotate((item.rotation * Math.PI) / 180);
+      }
+      ctx.drawImage(img, -destW / 2, -destH / 2, destW, destH);
+      ctx.restore();
+    });
+
+    return canvas;
+  };
+
+  // Exportar combinação em PNG
+  const exportCombinationPNG = async (items, name = 'combinacao') => {
+    if (!items || items.length === 0) {
+      alert(t('combination_empty_error'));
+      return;
+    }
+
+    try {
+      const canvas = await renderCombinationToCanvas(items, 1000, 800, {
+        padding: 60,
+        backgroundColor: '#ffffff'
+      });
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const sanitizedName = (name || 'combinacao')
+        .toLowerCase()
+        .replace(/[^a-z0-9_\-\s]/gi, '')
+        .trim()
+        .replace(/\s+/g, '_');
+
+      const downloadLink = document.createElement('a');
+      downloadLink.href = dataUrl;
+      downloadLink.download = `${sanitizedName || 'combinacao'}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    } catch (err) {
+      console.error('Erro ao exportar PNG da combinação:', err);
+      alert('Erro ao exportar imagem PNG.');
+    }
+  };
+
+  // Botão de Exportar PNG no Toolbar
+  const btnExportBoard = document.getElementById('btn-export-board');
+  if (btnExportBoard) {
+    btnExportBoard.addEventListener('click', () => {
+      const outfitName = boardOutfitNameInput ? boardOutfitNameInput.value.trim() : 'combinacao';
+      exportCombinationPNG(canvasItems, outfitName);
+    });
+  }
+
   // Salvar Combinação
   if (btnSaveBoard) {
     btnSaveBoard.addEventListener('click', async () => {
@@ -1952,22 +2112,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const cardEl = document.createElement('div');
         cardEl.className = 'combination-card';
 
-        // Previa das peças em miniatura
-        let miniItemsHtml = '';
-        if (Array.isArray(comb.canvas_state)) {
-          comb.canvas_state.forEach(ci => {
-            const miniWidth = Math.max(20, (ci.width || 150) * 0.3);
-            const miniHeight = Math.max(20, (ci.height || 150) * 0.3);
-            const miniLeft = (ci.x || 0) * 0.3;
-            const miniTop = (ci.y || 0) * 0.3;
-
-            const miniRot = ci.rotation || 0;
-            miniItemsHtml += `
-              <img src="${ci.image_url}" alt="${ci.nome || ''}" style="position: absolute; left: ${miniLeft}px; top: ${miniTop}px; width: ${miniWidth}px; height: ${miniHeight}px; transform: rotate(${miniRot}deg); object-fit: contain; z-index: ${ci.zIndex || 1};">
-            `;
-          });
-        }
-
         const isFav = !!comb.is_favorite;
 
         cardEl.innerHTML = `
@@ -1978,18 +2122,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             </button>
           </div>
           <div class="combination-preview-box">
-            ${miniItemsHtml}
+            <div class="preview-loading" style="display:flex; align-items:center; justify-center; height:100%; color:var(--text-muted); font-size:0.75rem;">Carregando prévia...</div>
           </div>
           <div class="combination-card-actions">
             <button class="btn btn-secondary btn-sm btn-load-combination" data-id="${comb.id}">
               <i data-lucide="external-link" class="icon"></i>
               <span>Carregar</span>
             </button>
-            <button class="btn btn-secondary btn-sm btn-delete-combination" data-id="${comb.id}">
+            <button class="btn btn-secondary btn-sm btn-icon-sm btn-export-combination" data-id="${comb.id}" title="Exportar PNG">
+              <i data-lucide="download" class="icon"></i>
+            </button>
+            <button class="btn btn-secondary btn-sm btn-icon-sm btn-delete-combination" data-id="${comb.id}" title="Excluir">
               <i data-lucide="trash-2" class="icon"></i>
             </button>
           </div>
         `;
+
+        // Renderiza prévia centralizada e escalada via Canvas
+        renderCombinationToCanvas(comb.canvas_state, 300, 160, { backgroundColor: '#f8f9fa' })
+          .then(thumbCanvas => {
+            const previewBox = cardEl.querySelector('.combination-preview-box');
+            if (previewBox) {
+              previewBox.innerHTML = '';
+              thumbCanvas.style.width = '100%';
+              thumbCanvas.style.height = '100%';
+              thumbCanvas.style.objectFit = 'contain';
+              previewBox.appendChild(thumbCanvas);
+            }
+          })
+          .catch(err => console.error('Erro ao gerar preview da combinação:', err));
 
         // Event Listener para Favoritar (Togglamento de is_favorite na tabela public.combinacoes)
         const starBtn = cardEl.querySelector('.btn-star-favorite');
@@ -2022,6 +2183,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 starBtn.classList.remove('is-favorite');
               }
             }
+          });
+        }
+
+        // Event Listener para Exportar Combinação em PNG
+        const btnExportComb = cardEl.querySelector('.btn-export-combination');
+        if (btnExportComb) {
+          btnExportComb.addEventListener('click', () => {
+            exportCombinationPNG(comb.canvas_state, comb.nome);
           });
         }
 
