@@ -514,7 +514,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     const entries = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
-    const colorPalette = ['#0f172a', '#334155', '#475569', '#64748b', '#94a3b8', '#cbd5e1', '#e2e8f0'];
+    const colorPalette = ['#2563eb', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#ec4899', '#f97316', '#6366f1', '#14b8a6', '#84cc16'];
 
     // Donut SVG Calculations
     const radius = 60;
@@ -581,24 +581,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!adminOverviewChart) return;
 
     const metrics = [
-      { label: t('metric_users_label'), count: users, shortLabel: 'Usuários' },
-      { label: t('metric_items_label'), count: items, shortLabel: 'Peças' },
-      { label: t('metric_combinations_label'), count: combinations, shortLabel: 'Outfits' },
-      { label: t('metric_wishlist_label'), count: wishlist, shortLabel: 'Wishlist' }
+      { label: t('metric_users_label'), count: users, shortLabel: 'Usuários', color: '#2563eb' },
+      { label: t('metric_items_label'), count: items, shortLabel: 'Peças', color: '#10b981' },
+      { label: t('metric_combinations_label'), count: combinations, shortLabel: 'Outfits', color: '#8b5cf6' },
+      { label: t('metric_wishlist_label'), count: wishlist, shortLabel: 'Wishlist', color: '#f59e0b' }
     ];
 
     const maxVal = Math.max(...metrics.map(m => m.count), 10);
-    const chartWidth = 320;
-    const chartHeight = 160;
-    const paddingX = 40;
-    const paddingY = 25;
+    const chartWidth = 360;
+    const chartHeight = 180;
+    const paddingX = 45;
+    const paddingY = 30;
     const plotWidth = chartWidth - paddingX * 2;
     const plotHeight = chartHeight - paddingY * 2;
 
     const points = metrics.map((m, idx) => {
       const x = paddingX + (idx / (metrics.length - 1)) * plotWidth;
       const y = paddingY + plotHeight - (m.count / maxVal) * plotHeight;
-      return { x, y, count: m.count, label: m.shortLabel, fullLabel: m.label };
+      return { x, y, count: m.count, label: m.shortLabel, fullLabel: m.label, color: m.color };
     });
 
     // Build SVG Path
@@ -630,11 +630,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     points.forEach(p => {
       pointsHtml += `
         <g class="chart-node-group">
-          <circle cx="${p.x}" cy="${p.y}" r="5" fill="#0f172a" stroke="#ffffff" stroke-width="2" class="chart-point">
+          <circle cx="${p.x}" cy="${p.y}" r="6" fill="${p.color}" stroke="#ffffff" stroke-width="2.5" class="chart-point">
             <title>${p.fullLabel}: ${p.count}</title>
           </circle>
-          <text x="${p.x}" y="${p.y - 10}" text-anchor="middle" font-size="10" font-weight="700" fill="#0f172a">${p.count}</text>
-          <text x="${p.x}" y="${chartHeight - 4}" text-anchor="middle" font-size="9" font-weight="600" fill="#64748b">${p.label}</text>
+          <text x="${p.x}" y="${p.y - 10}" text-anchor="middle" font-size="10" font-weight="700" fill="#1e293b">${p.count}</text>
+          <text x="${p.x}" y="${chartHeight - 8}" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">${p.label}</text>
         </g>
       `;
     });
@@ -644,13 +644,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         <svg viewBox="0 0 ${chartWidth} ${chartHeight}" class="line-chart-svg">
           <defs>
             <linearGradient id="lineChartGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#0f172a" stop-opacity="0.25"/>
-              <stop offset="100%" stop-color="#0f172a" stop-opacity="0.0"/>
+              <stop offset="0%" stop-color="#2563eb" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#2563eb" stop-opacity="0.0"/>
             </linearGradient>
           </defs>
           ${gridLinesHtml}
           <path d="${areaD}" fill="url(#lineChartGradient)" />
-          <path d="${pathD}" fill="none" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="${pathD}" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
           ${pointsHtml}
         </svg>
       </div>
@@ -1494,8 +1494,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Armazenamento de categorias customizadas criadas dinamicamente pelo usuário
+  const customCategories = new Set();
+
+  // Função para lidar com seleção/criação de nova categoria de roupa personalizada
+  const handleCategoryInputSelect = (inputEl) => {
+    if (!inputEl) return;
+    const val = inputEl.value.trim();
+    const addNewOptionText = t('add_new_type_option');
+    const isAddNew = val === addNewOptionText ||
+      val === '+ Adicionar novo tipo...' ||
+      val === '+ Add new type...' ||
+      val === '+ Добавить новый тип...';
+
+    if (isAddNew) {
+      inputEl.value = '';
+      const customCat = prompt(t('prompt_new_type_title'));
+      if (customCat && customCat.trim()) {
+        const cleaned = customCat.trim();
+        customCategories.add(cleaned);
+        updateCategoriesDatalist(Array.from(customCategories));
+        inputEl.value = cleaned;
+      }
+    }
+  };
+
+  ['piece-categoria', 'edit-piece-categoria', 'wishlist-categoria'].forEach(inputId => {
+    const inputEl = document.getElementById(inputId);
+    if (inputEl) {
+      inputEl.addEventListener('change', () => handleCategoryInputSelect(inputEl));
+      inputEl.addEventListener('input', () => {
+        const val = inputEl.value.trim();
+        if (val.startsWith('+ ')) {
+          handleCategoryInputSelect(inputEl);
+        }
+      });
+    }
+  });
+
   // Atualizar Datalist Autocomplete de Categorias (suportando novas categorias personalizadas)
-  const updateCategoriesDatalist = (existingCategories) => {
+  const updateCategoriesDatalist = (existingCategories = []) => {
     if (!categoriesDatalist) return;
     const defaultCategories = [
       'Camiseta',
@@ -1513,15 +1551,98 @@ document.addEventListener('DOMContentLoaded', async () => {
     ];
 
     const rawList = Array.from(
-      new Set([...defaultCategories, ...existingCategories.filter(Boolean)])
+      new Set([...defaultCategories, ...Array.from(customCategories), ...(existingCategories || []).filter(Boolean)])
     );
 
     const translatedSet = new Set(rawList.map(cat => getCategoryTranslation(cat)));
+    const addNewOptionText = t('add_new_type_option');
 
-    categoriesDatalist.innerHTML = Array.from(translatedSet)
-      .map(translated => `<option value="${translated}"></option>`)
-      .join('');
+    categoriesDatalist.innerHTML = `<option value="${addNewOptionText}"></option>` +
+      Array.from(translatedSet)
+        .map(translated => `<option value="${translated}"></option>`)
+        .join('');
   };
+
+  // Atualizar dropdowns de filtros de pesquisa e metadados no guarda-roupa
+  const updateWardrobeFilterOptions = (items) => {
+    const filterCategory = document.getElementById('wardrobe-filter-category');
+    const filterBrand = document.getElementById('wardrobe-filter-brand');
+    const filterColor = document.getElementById('wardrobe-filter-color');
+    const filterSeason = document.getElementById('wardrobe-filter-season');
+    const filterFormality = document.getElementById('wardrobe-filter-formality');
+
+    if (!filterCategory) return;
+
+    const currentCat = filterCategory.value;
+    const currentBrand = filterBrand ? filterBrand.value : '';
+    const currentColor = filterColor ? filterColor.value : '';
+    const currentSeason = filterSeason ? filterSeason.value : '';
+    const currentFormality = filterFormality ? filterFormality.value : '';
+
+    const categories = Array.from(new Set(items.map(i => i.categoria).filter(Boolean))).sort();
+    const brands = Array.from(new Set(items.map(i => i.marca).filter(Boolean))).sort();
+    const colors = Array.from(new Set(items.map(i => i.cor).filter(Boolean))).sort();
+    const seasons = Array.from(new Set(items.map(i => i.estacao).filter(Boolean))).sort();
+    const formalities = Array.from(new Set(items.map(i => i.formalidade).filter(Boolean))).sort();
+
+    filterCategory.innerHTML = `<option value="">${t('filter_all_categories')}</option>` +
+      categories.map(c => `<option value="${c}" ${c === currentCat ? 'selected' : ''}>${getCategoryTranslation(c)}</option>`).join('');
+
+    if (filterBrand) {
+      filterBrand.innerHTML = `<option value="">${t('filter_all_brands')}</option>` +
+        brands.map(b => `<option value="${b}" ${b === currentBrand ? 'selected' : ''}>${b}</option>`).join('');
+    }
+
+    if (filterColor) {
+      filterColor.innerHTML = `<option value="">${t('filter_all_colors')}</option>` +
+        colors.map(c => `<option value="${c}" ${c === currentColor ? 'selected' : ''}>${c}</option>`).join('');
+    }
+
+    if (filterSeason) {
+      filterSeason.innerHTML = `<option value="">${t('filter_all_seasons')}</option>` +
+        seasons.map(s => `<option value="${s}" ${s === currentSeason ? 'selected' : ''}>${s}</option>`).join('');
+    }
+
+    if (filterFormality) {
+      filterFormality.innerHTML = `<option value="">${t('filter_all_formality')}</option>` +
+        formalities.map(f => `<option value="${f}" ${f === currentFormality ? 'selected' : ''}>${f}</option>`).join('');
+    }
+  };
+
+  // Listeners para a barra de pesquisa e filtros do guarda-roupa
+  let filterDebounceTimer = null;
+  const triggerWardrobeFilter = () => {
+    clearTimeout(filterDebounceTimer);
+    filterDebounceTimer = setTimeout(() => {
+      loadWardrobeItems();
+    }, 200);
+  };
+
+  const searchInput = document.getElementById('wardrobe-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', triggerWardrobeFilter);
+  }
+
+  ['wardrobe-filter-category', 'wardrobe-filter-brand', 'wardrobe-filter-color', 'wardrobe-filter-season', 'wardrobe-filter-formality'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', triggerWardrobeFilter);
+    }
+  });
+
+  const clearWardrobeFilters = () => {
+    if (searchInput) searchInput.value = '';
+    ['wardrobe-filter-category', 'wardrobe-filter-brand', 'wardrobe-filter-color', 'wardrobe-filter-season', 'wardrobe-filter-formality'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    loadWardrobeItems();
+  };
+
+  const btnClearFilters = document.getElementById('btn-clear-wardrobe-filters');
+  if (btnClearFilters) {
+    btnClearFilters.addEventListener('click', clearWardrobeFilters);
+  }
 
   // Carregar e Renderizar Peças do Guarda-Roupa Agrupadas por Categoria (Ativas vs Arquivadas)
   const loadWardrobeItems = async () => {
@@ -1545,18 +1666,63 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const allCategories = (roupas || []).map(r => r.categoria);
       updateCategoriesDatalist(allCategories);
+      updateWardrobeFilterOptions(roupas || []);
 
-      // Filtra conforme a aba selecionada (Ativas vs Arquivadas)
+      const searchVal = (document.getElementById('wardrobe-search-input')?.value || '').trim().toLowerCase();
+      const catVal = document.getElementById('wardrobe-filter-category')?.value || '';
+      const brandVal = document.getElementById('wardrobe-filter-brand')?.value || '';
+      const colorVal = document.getElementById('wardrobe-filter-color')?.value || '';
+      const seasonVal = document.getElementById('wardrobe-filter-season')?.value || '';
+      const formalityVal = document.getElementById('wardrobe-filter-formality')?.value || '';
+
+      const isFilteringActive = Boolean(searchVal || catVal || brandVal || colorVal || seasonVal || formalityVal);
+
+      // Filtra conforme a aba selecionada (Ativas vs Arquivadas) e os filtros de busca/metadados
       const filteredRoupas = (roupas || []).filter(item => {
-        if (wardrobeMode === 'archived') {
-          return item.status === 'Arquivado';
-        } else {
-          return item.status !== 'Arquivado';
+        const matchesStatus = wardrobeMode === 'archived' ? item.status === 'Arquivado' : item.status !== 'Arquivado';
+        if (!matchesStatus) return false;
+
+        if (searchVal) {
+          const nameMatch = (item.nome || '').toLowerCase().includes(searchVal);
+          const brandMatch = (item.marca || '').toLowerCase().includes(searchVal);
+          const colorMatch = (item.cor || '').toLowerCase().includes(searchVal);
+          const catMatch = (item.categoria || '').toLowerCase().includes(searchVal) || getCategoryTranslation(item.categoria).toLowerCase().includes(searchVal);
+          const sizeMatch = (item.tamanho || '').toLowerCase().includes(searchVal);
+          const formalityMatch = (item.formalidade || '').toLowerCase().includes(searchVal);
+          const seasonMatch = (item.estacao || '').toLowerCase().includes(searchVal);
+
+          if (!nameMatch && !brandMatch && !colorMatch && !catMatch && !sizeMatch && !formalityMatch && !seasonMatch) {
+            return false;
+          }
         }
+
+        if (catVal && item.categoria !== catVal) return false;
+        if (brandVal && item.marca !== brandVal) return false;
+        if (colorVal && item.cor !== colorVal) return false;
+        if (seasonVal && item.estacao !== seasonVal) return false;
+        if (formalityVal && item.formalidade !== formalityVal) return false;
+
+        return true;
       });
 
       if (filteredRoupas.length === 0) {
-        if (wardrobeMode === 'archived') {
+        if (isFilteringActive) {
+          wardrobeCategoriesContainer.innerHTML = `
+            <div class="empty-wardrobe-card">
+              <i data-lucide="search-x" class="empty-wardrobe-icon"></i>
+              <h4 class="card-title">${t('no_filtered_items_title')}</h4>
+              <p class="card-desc">${t('no_filtered_items_desc')}</p>
+              <button class="btn btn-secondary" id="btn-reset-filters-empty" style="margin-top: 16px;">
+                <i data-lucide="x-circle" class="icon"></i>
+                <span>${t('btn_clear_filters')}</span>
+              </button>
+            </div>
+          `;
+          const btnResetEmpty = document.getElementById('btn-reset-filters-empty');
+          if (btnResetEmpty) {
+            btnResetEmpty.addEventListener('click', clearWardrobeFilters);
+          }
+        } else if (wardrobeMode === 'archived') {
           wardrobeCategoriesContainer.innerHTML = `
             <div class="empty-wardrobe-card">
               <i data-lucide="archive" class="empty-wardrobe-icon"></i>
@@ -1640,6 +1806,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                   <i data-lucide="rotate-ccw" class="icon-sm"></i>
                   <span>${t('btn_restore_piece')}</span>
                 </button>
+                <button class="btn btn-secondary btn-sm btn-delete-permanently" data-id="${piece.id}" data-name="${piece.nome}" title="${t('btn_delete_permanently')}">
+                  <i data-lucide="trash-2" class="icon-sm"></i>
+                  <span>${t('btn_delete_permanently')}</span>
+                </button>
               </div>
             `
             : `
@@ -1680,6 +1850,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const { error } = await supabaseClient
                   .from('roupas')
                   .update({ status: 'Arquivado', updated_at: new Date().toISOString() })
+                  .eq('id', piece.id);
+
+                if (error) {
+                  alert(translateSupabaseError(error));
+                } else {
+                  loadWardrobeItems();
+                }
+              }
+            });
+          }
+
+          // Bind Permanent Delete button
+          const btnDeletePermanently = cardEl.querySelector('.btn-delete-permanently');
+          if (btnDeletePermanently) {
+            btnDeletePermanently.addEventListener('click', async () => {
+              if (confirm(t('confirm_delete_permanently', { name: piece.nome }))) {
+                const { error } = await supabaseClient
+                  .from('roupas')
+                  .delete()
                   .eq('id', piece.id);
 
                 if (error) {

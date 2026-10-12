@@ -116,14 +116,25 @@ export const translations = {
     empty_wardrobe_desc: "Sua coleção está vazia. Clique no botão acima para cadastrar sua primeira peça.",
     empty_archived_title: "Nenhuma peça arquivada",
     empty_archived_desc: "Quando você arquivar uma peça, ela aparecerá aqui para consulta ou restauração.",
+    wardrobe_search_placeholder: "Buscar por nome, marca, cor, tamanho...",
+    filter_all_categories: "Todas as Categorias",
+    filter_all_brands: "Todas as Marcas",
+    filter_all_colors: "Todas as Cores",
+    filter_all_seasons: "Todas as Estações",
+    filter_all_formality: "Todas as Formalidades",
+    btn_clear_filters: "Limpar Filtros",
+    no_filtered_items_title: "Nenhuma peça encontrada",
+    no_filtered_items_desc: "Tente ajustar a busca ou os filtros aplicados para encontrar suas peças.",
     no_image: "Sem imagem",
 
     // Ações de Peças (Editing & Archiving)
     btn_edit_piece: "Editar",
     btn_archive_piece: "Arquivar",
     btn_restore_piece: "Restaurar",
+    btn_delete_permanently: "Excluir definitivamente",
     confirm_archive_piece: "Deseja arquivar a peça \"{name}\"? Ela será movida para o Banco de Peças Anteriores e mantida nas combinações históricas.",
     confirm_restore_piece: "Deseja restaurar a peça \"{name}\" para o guarda-roupa ativo?",
+    confirm_delete_permanently: "Deseja excluir definitivamente a peça \"{name}\"? Esta ação é irreversível.",
     piece_archived_success: "Peça arquivada com sucesso!",
     piece_restored_success: "Peça restaurada com sucesso!",
     piece_updated_success: "Peça atualizada com sucesso!",
@@ -220,6 +231,9 @@ export const translations = {
     btn_convert_to_wardrobe: "Mover p/ Guarda-Roupa",
     confirm_convert_wishlist: "Deseja converter o item \"{name}\" em uma peça ativa no seu guarda-roupa?",
     wishlist_converted_success: "Item movido para o seu Guarda-Roupa!",
+
+    add_new_type_option: "+ Adicionar novo tipo...",
+    prompt_new_type_title: "Digite o nome do novo tipo / categoria de roupa:",
 
     // Categorias de Roupas
     category_camiseta: "Camiseta",
@@ -388,14 +402,25 @@ export const translations = {
     empty_wardrobe_desc: "Your collection is empty. Click the button above to register your first piece.",
     empty_archived_title: "No archived pieces",
     empty_archived_desc: "When you archive an item, it will appear here for viewing or restoration.",
+    wardrobe_search_placeholder: "Search by name, brand, color, size...",
+    filter_all_categories: "All Categories",
+    filter_all_brands: "All Brands",
+    filter_all_colors: "All Colors",
+    filter_all_seasons: "All Seasons",
+    filter_all_formality: "All Formality",
+    btn_clear_filters: "Clear Filters",
+    no_filtered_items_title: "No clothing items found",
+    no_filtered_items_desc: "Try adjusting your search terms or filters to find your items.",
     no_image: "No image",
 
     // Ações de Peças (Editing & Archiving)
     btn_edit_piece: "Edit",
     btn_archive_piece: "Archive",
     btn_restore_piece: "Restore",
+    btn_delete_permanently: "Delete permanently",
     confirm_archive_piece: "Do you want to archive the item \"{name}\"? It will be moved to the Previous Pieces Bank and kept in historical outfits.",
     confirm_restore_piece: "Do you want to restore the item \"{name}\" back to your active wardrobe?",
+    confirm_delete_permanently: "Are you sure you want to permanently delete \"{name}\"? This action cannot be undone.",
     piece_archived_success: "Item archived successfully!",
     piece_restored_success: "Item restored successfully!",
     piece_updated_success: "Item updated successfully!",
@@ -492,6 +517,9 @@ export const translations = {
     btn_convert_to_wardrobe: "Move to Wardrobe",
     confirm_convert_wishlist: "Do you want to convert the wishlist item \"{name}\" into an active piece in your wardrobe?",
     wishlist_converted_success: "Item moved to your Wardrobe!",
+
+    add_new_type_option: "+ Add new type...",
+    prompt_new_type_title: "Enter the name of the new clothing type / category:",
 
     // Categorias de Roupas
     category_camiseta: "T-Shirt",
@@ -660,14 +688,25 @@ export const translations = {
     empty_wardrobe_desc: "Ваша коллекция пуста. Нажмите кнопку выше, чтобы добавить первую вещь.",
     empty_archived_title: "Нет архивных вещей",
     empty_archived_desc: "Когда вы архивируете вещь, она появится здесь для просмотра или восстановления.",
+    wardrobe_search_placeholder: "Поиск по названию, бренду, цвету, размеру...",
+    filter_all_categories: "Все категории",
+    filter_all_brands: "Все бренды",
+    filter_all_colors: "Все цвета",
+    filter_all_seasons: "Все сезоны",
+    filter_all_formality: "Все стили",
+    btn_clear_filters: "Сбросить фильтры",
+    no_filtered_items_title: "Вещи не найдены",
+    no_filtered_items_desc: "Попробуйте изменить параметры поиска или сбросить фильтры.",
     no_image: "Без изображения",
 
     // Ações de Peças (Editing & Archiving)
     btn_edit_piece: "Редактировать",
     btn_archive_piece: "В архив",
     btn_restore_piece: "Восстановить",
+    btn_delete_permanently: "Удалить навсегда",
     confirm_archive_piece: "Вы хотите отправить вещь \"{name}\" в архив? Она сохранится в ранее созданных образах.",
     confirm_restore_piece: "Восстановить вещь \"{name}\" в активный гардероб?",
+    confirm_delete_permanently: "Вы уверены, что хотите навсегда удалить вещь \"{name}\"? Это действие нельзя отменить.",
     piece_archived_success: "Вещь перенесена в архив!",
     piece_restored_success: "Вещь успешно восстановлена!",
     piece_updated_success: "Вещь успешно обновлена!",
@@ -764,6 +803,9 @@ export const translations = {
     btn_convert_to_wardrobe: "Перенести в гардероб",
     confirm_convert_wishlist: "Перенести вещь \"{name}\" из Wishlist в ваш активный гардероб?",
     wishlist_converted_success: "Вещь успешно перенесена в Гардероб!",
+
+    add_new_type_option: "+ Добавить новый тип...",
+    prompt_new_type_title: "Введите название нового типа / категории одежды:",
 
     // Categorias de Roupas
     category_camiseta: "Футболка",
