@@ -515,11 +515,18 @@
         <!-- Input de Imagem com Captura Nativa e Processamento Visual -->
         <div class="form-group">
           <span class="form-label-title" data-i18n="piece_image_label">Foto da Peça</span>
-          <input type="file" id="piece-image" accept="image/*" style="display: none;">
-          <label for="piece-image" class="btn btn-secondary custom-file-upload-btn">
-            <i data-lucide="image-plus" class="icon"></i>
-            <span data-i18n="btn_choose_photo">Escolher Foto</span>
-          </label>
+          <div class="image-upload-options">
+            <input type="file" id="piece-image-camera" accept="image/*" capture="environment" style="display: none;">
+            <label for="piece-image-camera" class="btn btn-secondary custom-file-upload-btn">
+              <i data-lucide="camera" class="icon"></i>
+              <span data-i18n="btn_take_photo">Tirar Foto</span>
+            </label>
+            <input type="file" id="piece-image-gallery" accept="image/*" style="display: none;">
+            <label for="piece-image-gallery" class="btn btn-secondary custom-file-upload-btn">
+              <i data-lucide="image" class="icon"></i>
+              <span data-i18n="btn_choose_gallery">Galeria</span>
+            </label>
+          </div>
           <div id="image-preview-container" class="image-preview-container" style="display: none;">
             <img id="piece-image-preview" src="" alt="Prévia da peça" class="piece-image-preview">
             <canvas id="crop-canvas-editor" class="crop-canvas-editor" style="display: none;"></canvas>
@@ -857,11 +864,18 @@
       <form id="add-wishlist-form" class="auth-form modal-form-body">
         <div class="form-group">
           <span class="form-label-title" data-i18n="piece_image_label">Foto da Peça</span>
-          <input type="file" id="wishlist-image" accept="image/*" style="display: none;">
-          <label for="wishlist-image" class="btn btn-secondary custom-file-upload-btn">
-            <i data-lucide="image-plus" class="icon"></i>
-            <span data-i18n="btn_choose_photo">Escolher Foto</span>
-          </label>
+          <div class="image-upload-options">
+            <input type="file" id="wishlist-image-camera" accept="image/*" capture="environment" style="display: none;">
+            <label for="wishlist-image-camera" class="btn btn-secondary custom-file-upload-btn">
+              <i data-lucide="camera" class="icon"></i>
+              <span data-i18n="btn_take_photo">Tirar Foto</span>
+            </label>
+            <input type="file" id="wishlist-image-gallery" accept="image/*" style="display: none;">
+            <label for="wishlist-image-gallery" class="btn btn-secondary custom-file-upload-btn">
+              <i data-lucide="image" class="icon"></i>
+              <span data-i18n="btn_choose_gallery">Galeria</span>
+            </label>
+          </div>
           <div id="wishlist-image-preview-container" class="image-preview-container" style="display: none;">
             <img id="wishlist-image-preview" src="" alt="Prévia Wishlist" class="piece-image-preview">
 

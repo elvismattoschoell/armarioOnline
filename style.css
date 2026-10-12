@@ -375,6 +375,14 @@ body {
   color: var(--text-primary);
 }
 
+.image-upload-options {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
 .custom-file-upload-btn {
   display: inline-flex;
   align-items: center;
@@ -385,6 +393,12 @@ body {
   padding: 8px 16px;
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+.image-upload-options .custom-file-upload-btn {
+  flex: 1;
+  min-width: 130px;
+  width: auto;
 }
 
 .form-input {
