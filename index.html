@@ -253,7 +253,15 @@
 
           <!-- Galeria de Combinações Salvas -->
           <div class="saved-combinations-section">
-            <h4 class="saved-combinations-title" data-i18n="saved_combinations_title">Combinações Salvas</h4>
+            <div class="saved-combinations-header">
+              <h4 class="saved-combinations-title" data-i18n="saved_combinations_title">Combinações Salvas</h4>
+              <div class="combinations-filter-group">
+                <select id="combinations-filter-favorite" class="form-input form-select filter-select-compact">
+                  <option value="all" data-i18n="filter_all_combinations">Todas as Combinações</option>
+                  <option value="favorites" data-i18n="filter_favorite_combinations">Apenas Favoritas</option>
+                </select>
+              </div>
+            </div>
             <div id="saved-combinations-list" class="saved-combinations-grid">
               <!-- Lista de combinações salvas carregada dinamicamente -->
             </div>
@@ -507,7 +515,7 @@
         <!-- Input de Imagem com Captura Nativa e Processamento Visual -->
         <div class="form-group">
           <span class="form-label-title" data-i18n="piece_image_label">Foto da Peça</span>
-          <input type="file" id="piece-image" accept="image/*" capture="environment" style="display: none;">
+          <input type="file" id="piece-image" accept="image/*" style="display: none;">
           <label for="piece-image" class="btn btn-secondary custom-file-upload-btn">
             <i data-lucide="image-plus" class="icon"></i>
             <span data-i18n="btn_choose_photo">Escolher Foto</span>

@@ -75,6 +75,9 @@ export const translations = {
     combination_name_required: "Por favor, digite um nome para a combinação.",
     combination_empty_error: "Adicione pelo menos uma peça ao canvas antes de salvar.",
     no_saved_combinations: "Nenhuma combinação salva ainda.",
+    filter_all_combinations: "Todas as Combinações",
+    filter_favorite_combinations: "Apenas Favoritas",
+    no_favorite_combinations: "Nenhuma combinação favorita encontrada.",
 
     // Admin View & Analytics
     admin_banner_title: "Painel de Administração",
@@ -361,6 +364,9 @@ export const translations = {
     combination_name_required: "Please enter a name for the combination.",
     combination_empty_error: "Add at least one item to the canvas before saving.",
     no_saved_combinations: "No saved combinations yet.",
+    filter_all_combinations: "All Combinations",
+    filter_favorite_combinations: "Favorites Only",
+    no_favorite_combinations: "No favorite combinations found.",
 
     // Admin View & Analytics
     admin_banner_title: "Administration Panel",
@@ -647,6 +653,9 @@ export const translations = {
     combination_name_required: "Пожалуйста, введите название комбинации.",
     combination_empty_error: "Добавьте хотя бы одну вещь на доску перед сохранением.",
     no_saved_combinations: "Пока нет сохраненных комбинаций.",
+    filter_all_combinations: "Все комбинации",
+    filter_favorite_combinations: "Только избранные",
+    no_favorite_combinations: "Избранные комбинации не найдены.",
 
     // Admin View & Analytics
     admin_banner_title: "Панель администратора",
