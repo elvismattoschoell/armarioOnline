@@ -397,6 +397,35 @@
             </button>
           </div>
 
+          <!-- Barra de Pesquisa e Filtros por Metadados -->
+          <div class="wardrobe-filters-bar">
+            <div class="search-input-wrapper">
+              <i data-lucide="search" class="icon search-icon"></i>
+              <input type="text" id="wardrobe-search-input" class="form-input wardrobe-search-input" placeholder="Buscar por nome, marca, cor, tamanho..." data-i18n-placeholder="wardrobe_search_placeholder">
+            </div>
+            <div class="filters-select-group">
+              <select id="wardrobe-filter-category" class="form-input form-select filter-select">
+                <option value="" data-i18n="filter_all_categories">Todas as Categorias</option>
+              </select>
+              <select id="wardrobe-filter-brand" class="form-input form-select filter-select">
+                <option value="" data-i18n="filter_all_brands">Todas as Marcas</option>
+              </select>
+              <select id="wardrobe-filter-color" class="form-input form-select filter-select">
+                <option value="" data-i18n="filter_all_colors">Todas as Cores</option>
+              </select>
+              <select id="wardrobe-filter-season" class="form-input form-select filter-select">
+                <option value="" data-i18n="filter_all_seasons">Todas as Estações</option>
+              </select>
+              <select id="wardrobe-filter-formality" class="form-input form-select filter-select">
+                <option value="" data-i18n="filter_all_formality">Todas as Formalidades</option>
+              </select>
+              <button id="btn-clear-wardrobe-filters" class="btn btn-secondary btn-sm btn-clear-filters" type="button" data-i18n-title="btn_clear_filters">
+                <i data-lucide="x-circle" class="icon-sm"></i>
+                <span data-i18n="btn_clear_filters">Limpar</span>
+              </button>
+            </div>
+          </div>
+
           <div id="wardrobe-categories-container" class="wardrobe-categories-container">
             <!-- As seções agrupadas por categoria serão injetadas aqui via Javascript -->
           </div>
