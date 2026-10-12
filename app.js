@@ -1585,26 +1585,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     const seasons = Array.from(new Set(items.map(i => i.estacao).filter(Boolean))).sort();
     const formalities = Array.from(new Set(items.map(i => i.formalidade).filter(Boolean))).sort();
 
-    filterCategory.innerHTML = `<option value="">${t('filter_all_categories')}</option>` +
+    filterCategory.innerHTML = `<option value="" data-i18n="filter_all_categories">${t('filter_all_categories')}</option>` +
       categories.map(c => `<option value="${c}" ${c === currentCat ? 'selected' : ''}>${getCategoryTranslation(c)}</option>`).join('');
 
     if (filterBrand) {
-      filterBrand.innerHTML = `<option value="">${t('filter_all_brands')}</option>` +
+      filterBrand.innerHTML = `<option value="" data-i18n="filter_all_brands">${t('filter_all_brands')}</option>` +
         brands.map(b => `<option value="${b}" ${b === currentBrand ? 'selected' : ''}>${b}</option>`).join('');
     }
 
     if (filterColor) {
-      filterColor.innerHTML = `<option value="">${t('filter_all_colors')}</option>` +
+      filterColor.innerHTML = `<option value="" data-i18n="filter_all_colors">${t('filter_all_colors')}</option>` +
         colors.map(c => `<option value="${c}" ${c === currentColor ? 'selected' : ''}>${c}</option>`).join('');
     }
 
     if (filterSeason) {
-      filterSeason.innerHTML = `<option value="">${t('filter_all_seasons')}</option>` +
+      filterSeason.innerHTML = `<option value="" data-i18n="filter_all_seasons">${t('filter_all_seasons')}</option>` +
         seasons.map(s => `<option value="${s}" ${s === currentSeason ? 'selected' : ''}>${s}</option>`).join('');
     }
 
     if (filterFormality) {
-      filterFormality.innerHTML = `<option value="">${t('filter_all_formality')}</option>` +
+      filterFormality.innerHTML = `<option value="" data-i18n="filter_all_formality">${t('filter_all_formality')}</option>` +
         formalities.map(f => `<option value="${f}" ${f === currentFormality ? 'selected' : ''}>${f}</option>`).join('');
     }
   };
@@ -2800,6 +2800,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  const combinationsFilterFavorite = document.getElementById('combinations-filter-favorite');
+  if (combinationsFilterFavorite) {
+    combinationsFilterFavorite.addEventListener('change', () => {
+      loadSavedCombinations();
+    });
+  }
+
   const initBoardView = async () => {
     await loadBoardPaletteItems(currentBoardPaletteTab);
     await loadSavedCombinations();
@@ -3434,9 +3441,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
+      const favFilterVal = combinationsFilterFavorite ? combinationsFilterFavorite.value : 'all';
+      const filteredCombinacoes = combinacoes.filter(comb => {
+        if (favFilterVal === 'favorites') {
+          return !!comb.is_favorite;
+        }
+        return true;
+      });
+
+      if (filteredCombinacoes.length === 0) {
+        if (favFilterVal === 'favorites') {
+          savedCombinationsList.innerHTML = `<p style="text-align: center; color: var(--text-muted); grid-column: 1 / -1;" data-i18n="no_favorite_combinations">${t('no_favorite_combinations')}</p>`;
+        } else {
+          savedCombinationsList.innerHTML = `<p style="text-align: center; color: var(--text-muted); grid-column: 1 / -1;" data-i18n="no_saved_combinations">${t('no_saved_combinations')}</p>`;
+        }
+        return;
+      }
+
       savedCombinationsList.innerHTML = '';
 
-      combinacoes.forEach(comb => {
+      filteredCombinacoes.forEach(comb => {
         const cardEl = document.createElement('div');
         cardEl.className = 'combination-card';
 
