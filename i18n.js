@@ -131,6 +131,8 @@ export const translations = {
     bg_processing_image: "Processando imagem...",
     bg_removed_success: "Fundo removido com IA com sucesso!",
     bg_removal_error: "Erro ao remover fundo com IA.",
+    bg_removal_error_details: "Falha na remoção de fundo com IA ({details}). Utilizando método alternativo...",
+    bg_wasm_not_supported: "WebAssembly não suportado neste navegador. Utilizando método alternativo...",
     bg_removal_fallback: "A IA falhou, use o recorte manual",
     btn_choose_photo: "Escolher Foto",
 
@@ -316,6 +318,8 @@ export const translations = {
     bg_processing_image: "Processing image...",
     bg_removed_success: "Background removed with AI successfully!",
     bg_removal_error: "Error removing background with AI.",
+    bg_removal_error_details: "AI background removal failed ({details}). Using alternative method...",
+    bg_wasm_not_supported: "WebAssembly is not supported in this browser. Using alternative method...",
     bg_removal_fallback: "AI failed, use manual cropping",
     btn_choose_photo: "Choose Photo",
 
@@ -501,6 +505,8 @@ export const translations = {
     bg_processing_image: "Обработка изображения...",
     bg_removed_success: "Фон успешно удален с помощью ИИ!",
     bg_removal_error: "Ошибка при удалении фона с помощью ИИ.",
+    bg_removal_error_details: "Сбой удаления фона с помощью ИИ ({details}). Используется альтернативный метод...",
+    bg_wasm_not_supported: "WebAssembly не поддерживается в этом браузере. Используется альтернативный метод...",
     bg_removal_fallback: "ИИ не справился, используйте ручную обрезку",
     btn_choose_photo: "Выбрать фото",
 

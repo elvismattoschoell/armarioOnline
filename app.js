@@ -731,6 +731,70 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (bgRemoveProgressFill) bgRemoveProgressFill.style.width = '0%';
   };
 
+  // Helper para verificar suporte a WebAssembly
+  const isWasmSupported = () => {
+    try {
+      if (typeof WebAssembly === 'object' && typeof WebAssembly.instantiate === 'function') {
+        const module = new WebAssembly.Module(Uint8Array.of(0, 97, 115, 109, 1, 0, 0, 0));
+        if (module instanceof WebAssembly.Module) {
+          return new WebAssembly.Instance(module) instanceof WebAssembly.Instance;
+        }
+      }
+    } catch (e) {
+      return false;
+    }
+    return false;
+  };
+
+  // Helper para detectar iOS / Mobile Safari
+  const isIOSDevice = () => {
+    const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+    const isMobileIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    const isMacTouch = /Macintosh/.test(ua) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1;
+    return isMobileIOS || isMacTouch;
+  };
+
+  // Helper para pré-escalar imagem em canvas reduzindo uso de memória RAM no iOS
+  const scaleImageIfNeeded = (imageSrc, maxDimension = 1024) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+
+        if (width <= maxDimension && height <= maxDimension) {
+          resolve(imageSrc);
+          return;
+        }
+
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            resolve(imageSrc);
+          }
+        }, 'image/png');
+      };
+      img.onerror = () => resolve(imageSrc);
+      img.src = imageSrc;
+    });
+  };
+
   // Remoção de Fundo via @imgly/background-removal (com visual progress bar e fallback gracioso)
   if (btnRemoveBg) {
     btnRemoveBg.addEventListener('click', async () => {
@@ -764,23 +828,40 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         let responseBlob = null;
 
-        // 1. Tenta remoção de fundo de alta qualidade via @imgly/background-removal com callback de progresso
-        try {
-          const imglyModule = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/+esm');
-          const removeBackground = imglyModule.default || imglyModule.removeBackground;
-          if (typeof removeBackground === 'function') {
-            responseBlob = await removeBackground(imageSource, {
-              progress: (key, current, total) => {
-                if (total && total > 0) {
-                  const p = Math.round((current / total) * 100);
-                  const statusMsg = key.includes('fetch') ? t('bg_downloading_model') : t('bg_processing_image');
-                  updateBgProgress(p, statusMsg);
+        // Verifica suporte a WebAssembly antes de tentar carregar/executar o @imgly
+        if (!isWasmSupported()) {
+          console.warn("WebAssembly não é suportado neste navegador/dispositivo.");
+          showPieceModalMessage(t('bg_wasm_not_supported'), 'error');
+        } else {
+          // 1. Tenta remoção de fundo via @imgly/background-removal com tratamento estrito e otimizações para iOS/Safari
+          try {
+            const isIOS = isIOSDevice();
+            // No iOS/Safari, reduz a resolução para economizar RAM e evitar estouro de memória no Web Worker/WASM
+            const sourceForImgly = isIOS ? await scaleImageIfNeeded(imageSource, 1024) : imageSource;
+
+            const imglyModule = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/+esm');
+            const removeBackground = imglyModule.default || imglyModule.removeBackground;
+
+            if (typeof removeBackground === 'function') {
+              const imglyConfig = {
+                // Modelo com quantização int8 para consumo menor de RAM no iOS / Mobile Safari
+                model: isIOS ? 'isnet_quint8' : 'isnet_fp16',
+                device: 'cpu',
+                progress: (key, current, total) => {
+                  if (total && total > 0) {
+                    const p = Math.round((current / total) * 100);
+                    const statusMsg = key.includes('fetch') ? t('bg_downloading_model') : t('bg_processing_image');
+                    updateBgProgress(p, statusMsg);
+                  }
                 }
-              }
-            });
+              };
+
+              responseBlob = await removeBackground(sourceForImgly, imglyConfig);
+            }
+          } catch (imglyErr) {
+            console.error("Falha detalhada ao executar @imgly/background-removal:", imglyErr);
+            showPieceModalMessage(t('bg_removal_error_details', { details: imglyErr.message || 'Erro no Web Worker/WASM' }), 'error');
           }
-        } catch (imglyErr) {
-          console.warn("Falha ao executar @imgly/background-removal:", imglyErr);
         }
 
         // 2. Fallback via Hugging Face Inference API se @imgly falhar
