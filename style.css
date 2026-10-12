@@ -190,6 +190,7 @@ body {
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.15s ease;
+  text-decoration: none;
 }
 
 .btn-primary {
@@ -220,7 +221,6 @@ body {
   margin-top: 24px;
 }
 
-/* Alinhamento de Botões Globais via Flexbox e margin-top: auto */
 .card,
 .auth-card,
 .settings-card,
@@ -259,7 +259,7 @@ body {
   margin-bottom: 16px;
 }
 
-/* Header de Fluxos (Ex: Board View) */
+/* Header de Fluxos */
 .flow-header {
   display: flex;
   align-items: center;
@@ -273,18 +273,7 @@ body {
   color: var(--text-secondary);
 }
 
-.board-canvas-area {
-  border: 1px dashed var(--border-dark);
-  border-radius: 8px;
-  min-height: 350px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  background-color: var(--bg-surface);
-}
-
-/* Authentication Screen - Corporate Minimalist Styling */
+/* Authentication Screen */
 .auth-wrapper {
   display: flex;
   align-items: center;
@@ -403,6 +392,7 @@ body {
   color: var(--text-primary);
   outline: none;
   transition: border-color 0.15s ease;
+  font-family: inherit;
 }
 
 .form-input:focus {
@@ -465,6 +455,10 @@ body {
 }
 
 /* Painel Admin - Cards e Métricas */
+.admin-metrics-grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
 .metric-card {
   gap: 8px;
 }
@@ -494,6 +488,71 @@ body {
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
+}
+
+/* Admin Charts minimalistas */
+.admin-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.chart-card {
+  padding: 24px;
+}
+
+.chart-header {
+  margin-bottom: 20px;
+}
+
+.chart-container {
+  width: 100%;
+}
+
+.bar-chart-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bar-chart-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bar-chart-label-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.bar-chart-label {
+  color: var(--text-primary);
+}
+
+.bar-chart-value {
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+.bar-chart-track {
+  width: 100%;
+  height: 10px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.bar-chart-fill {
+  height: 100%;
+  background-color: var(--primary-color);
+  border-radius: 9999px;
+  transition: width 0.3s ease;
 }
 
 /* Seção de Configurações e Perfil do Usuário */
@@ -543,12 +602,46 @@ body {
   word-break: break-all;
 }
 
-/* Guarda-Roupa / Categorias / Peças */
+/* Guarda-Roupa / Abas / Categorias / Peças */
+.wardrobe-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.wardrobe-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.wardrobe-tab-btn:hover {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.wardrobe-tab-btn.active {
+  background-color: var(--primary-color);
+  color: var(--primary-text);
+  border-color: var(--primary-color);
+}
+
 .wardrobe-categories-container {
   display: flex;
   flex-direction: column;
   gap: 32px;
-  margin-top: 20px;
 }
 
 .category-group {
@@ -667,6 +760,18 @@ body {
   border-radius: 4px;
 }
 
+.piece-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.piece-actions .btn {
+  flex: 1;
+}
+
 .empty-wardrobe-card {
   text-align: center;
   padding: 48px 24px;
@@ -680,6 +785,124 @@ body {
   height: 48px;
   color: var(--text-muted);
   margin-bottom: 12px;
+}
+
+/* Coleções Grid & Card */
+.collections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.collection-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.collection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.collection-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.collection-icon {
+  color: var(--primary-color);
+  width: 20px;
+  height: 20px;
+}
+
+.collection-badge-group {
+  display: flex;
+  gap: 6px;
+}
+
+.collection-outfits-selector-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.collection-outfit-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  background-color: var(--bg-surface);
+  transition: background-color 0.15s ease;
+}
+
+.collection-outfit-checkbox-item:hover {
+  background-color: var(--bg-hover);
+}
+
+/* Wishlist Grid & Card */
+.wishlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.wishlist-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.wishlist-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.status-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.status-pill.desired {
+  background-color: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.status-pill.acquired {
+  background-color: var(--success-bg);
+  color: var(--success-text);
+  border: 1px solid var(--success-border);
+}
+
+.wishlist-notes {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.wishlist-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
 }
 
 .modal-card-lg {
@@ -849,6 +1072,11 @@ body {
   font-size: 0.78125rem;
 }
 
+.icon-sm {
+  width: 14px;
+  height: 14px;
+}
+
 /* Modais Corporativos */
 .modal-overlay {
   position: fixed;
@@ -982,7 +1210,7 @@ body {
 
   .btn {
     width: 100%;
-    min-height: 44px; /* Otimizado para alvos de toque mobile */
+    min-height: 44px;
   }
 
   .modal-actions {
@@ -992,6 +1220,15 @@ body {
   .flow-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .wardrobe-tabs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wardrobe-tab-btn {
+    justify-content: center;
   }
 }
 

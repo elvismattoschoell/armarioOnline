@@ -3,6 +3,8 @@ import { getLanguage, setLanguage, t, translateSupabaseError, updateDOMTranslati
 
 // Estado Global do Usuário Atual
 let currentUser = null;
+let wardrobeMode = 'active'; // 'active' | 'archived'
+let currentManagingCollectionId = null;
 
 // Helper para re-renderizar ícones Lucide
 const refreshIcons = () => {
@@ -47,13 +49,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   const dashboardView = document.getElementById('dashboard-view');
   const wardrobeView = document.getElementById('wardrobe-view');
   const boardView = document.getElementById('board-view');
+  const collectionsView = document.getElementById('collections-view');
+  const wishlistView = document.getElementById('wishlist-view');
   const adminView = document.getElementById('admin-view');
   const settingsView = document.getElementById('settings-view');
-  const viewSections = [dashboardView, wardrobeView, boardView, adminView, settingsView];
+  const viewSections = [dashboardView, wardrobeView, boardView, collectionsView, wishlistView, adminView, settingsView];
 
   // Elementos do Guarda-Roupa
   const wardrobeCategoriesContainer = document.getElementById('wardrobe-categories-container');
   const btnOpenAddPieceModal = document.getElementById('btn-open-add-piece-modal');
+  const tabBtnActive = document.getElementById('tab-btn-active');
+  const tabBtnArchived = document.getElementById('tab-btn-archived');
+
   const modalAddPiece = document.getElementById('modal-add-piece');
   const btnClosePieceModal = document.getElementById('btn-close-piece-modal');
   const btnCancelPiece = document.getElementById('btn-cancel-piece');
@@ -71,6 +78,56 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pieceTamanhoInput = document.getElementById('piece-tamanho');
   const pieceModalMessage = document.getElementById('piece-modal-message');
   const btnSubmitPiece = document.getElementById('btn-submit-piece');
+
+  // Elementos do Modal de Edição de Peça
+  const modalEditPiece = document.getElementById('modal-edit-piece');
+  const btnCloseEditPieceModal = document.getElementById('btn-close-edit-piece-modal');
+  const btnCancelEditPiece = document.getElementById('btn-cancel-edit-piece');
+  const editPieceForm = document.getElementById('edit-piece-form');
+  const editPieceIdInput = document.getElementById('edit-piece-id');
+  const editPieceNomeInput = document.getElementById('edit-piece-nome');
+  const editPieceCategoriaInput = document.getElementById('edit-piece-categoria');
+  const editPieceCorInput = document.getElementById('edit-piece-cor');
+  const editPieceEstacaoInput = document.getElementById('edit-piece-estacao');
+  const editPieceFormalidadeInput = document.getElementById('edit-piece-formalidade');
+  const editPieceMarcaInput = document.getElementById('edit-piece-marca');
+  const editPieceTamanhoInput = document.getElementById('edit-piece-tamanho');
+  const editPieceModalMessage = document.getElementById('edit-piece-modal-message');
+  const btnSubmitEditPiece = document.getElementById('btn-submit-edit-piece');
+
+  // Elementos de Coleções
+  const collectionsGrid = document.getElementById('collections-grid');
+  const modalAddCollection = document.getElementById('modal-add-collection');
+  const btnCloseCollectionModal = document.getElementById('btn-close-collection-modal');
+  const btnCancelCollection = document.getElementById('btn-cancel-collection');
+  const addCollectionForm = document.getElementById('add-collection-form');
+  const collectionNomeInput = document.getElementById('collection-nome');
+  const collectionDescInput = document.getElementById('collection-desc');
+  const collectionModalMessage = document.getElementById('collection-modal-message');
+  const btnSubmitCollection = document.getElementById('btn-submit-collection');
+
+  const modalManageCollection = document.getElementById('modal-manage-collection');
+  const btnCloseManageCollectionModal = document.getElementById('btn-close-manage-collection-modal');
+  const collectionOutfitsSelectorList = document.getElementById('collection-outfits-selector-list');
+  const btnSaveCollectionOutfits = document.getElementById('btn-save-collection-outfits');
+  const manageCollectionTitle = document.getElementById('manage-collection-title');
+
+  // Elementos de Wishlist
+  const wishlistGrid = document.getElementById('wishlist-grid');
+  const modalAddWishlist = document.getElementById('modal-add-wishlist');
+  const btnCloseWishlistModal = document.getElementById('btn-close-wishlist-modal');
+  const btnCancelWishlist = document.getElementById('btn-cancel-wishlist');
+  const addWishlistForm = document.getElementById('add-wishlist-form');
+  const wishlistImageInput = document.getElementById('wishlist-image');
+  const wishlistImagePreview = document.getElementById('wishlist-image-preview');
+  const wishlistImagePreviewContainer = document.getElementById('wishlist-image-preview-container');
+  const wishlistNomeInput = document.getElementById('wishlist-nome');
+  const wishlistCategoriaInput = document.getElementById('wishlist-categoria');
+  const wishlistPrecoInput = document.getElementById('wishlist-preco');
+  const wishlistLinkInput = document.getElementById('wishlist-link');
+  const wishlistObservacoesInput = document.getElementById('wishlist-observacoes');
+  const wishlistModalMessage = document.getElementById('wishlist-modal-message');
+  const btnSubmitWishlist = document.getElementById('btn-submit-wishlist');
 
   const btnCreateOutfit = document.getElementById('btn-quick-create-outfit');
   const btnCloseBoard = document.getElementById('btn-close-board');
@@ -96,6 +153,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Métricas do Admin
   const metricUsersCount = document.getElementById('metric-users-count');
   const metricItemsCount = document.getElementById('metric-items-count');
+  const metricCombinationsCount = document.getElementById('metric-combinations-count');
+  const metricWishlistCount = document.getElementById('metric-wishlist-count');
+  const adminCategoryChart = document.getElementById('admin-category-chart');
+  const adminOverviewChart = document.getElementById('admin-overview-chart');
 
   // Configura seletor de idioma de acordo com a preferência atual
   const syncLanguageSelectors = () => {
@@ -149,7 +210,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     authMessage.style.display = 'none';
   };
 
-  // Função auxiliar para mensagens no modal de senha
+  // Função auxiliar para mensagens nos modais
   const showPasswordModalMessage = (text, type = 'error') => {
     if (!passwordModalMessage) return;
     passwordModalMessage.textContent = text;
@@ -163,7 +224,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     passwordModalMessage.style.display = 'none';
   };
 
-  // Função auxiliar para mensagens no modal de roupa
   const showPieceModalMessage = (text, type = 'error') => {
     if (!pieceModalMessage) return;
     pieceModalMessage.textContent = text;
@@ -175,6 +235,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!pieceModalMessage) return;
     pieceModalMessage.textContent = '';
     pieceModalMessage.style.display = 'none';
+  };
+
+  const showEditPieceModalMessage = (text, type = 'error') => {
+    if (!editPieceModalMessage) return;
+    editPieceModalMessage.textContent = text;
+    editPieceModalMessage.className = `auth-message ${type}`;
+    editPieceModalMessage.style.display = 'block';
+  };
+
+  const clearEditPieceModalMessage = () => {
+    if (!editPieceModalMessage) return;
+    editPieceModalMessage.textContent = '';
+    editPieceModalMessage.style.display = 'none';
+  };
+
+  const showCollectionModalMessage = (text, type = 'error') => {
+    if (!collectionModalMessage) return;
+    collectionModalMessage.textContent = text;
+    collectionModalMessage.className = `auth-message ${type}`;
+    collectionModalMessage.style.display = 'block';
+  };
+
+  const clearCollectionModalMessage = () => {
+    if (!collectionModalMessage) return;
+    collectionModalMessage.textContent = '';
+    collectionModalMessage.style.display = 'none';
+  };
+
+  const showWishlistModalMessage = (text, type = 'error') => {
+    if (!wishlistModalMessage) return;
+    wishlistModalMessage.textContent = text;
+    wishlistModalMessage.className = `auth-message ${type}`;
+    wishlistModalMessage.style.display = 'block';
+  };
+
+  const clearWishlistModalMessage = () => {
+    if (!wishlistModalMessage) return;
+    wishlistModalMessage.textContent = '';
+    wishlistModalMessage.style.display = 'none';
   };
 
   // Alternar entre formulários de Login e Cadastro
@@ -279,6 +378,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         pageTitle.textContent = t('page_board');
       }
       initBoardView();
+    } else if (viewName === 'collections') {
+      if (collectionsView) collectionsView.style.display = 'block';
+      if (pageTitle) {
+        pageTitle.setAttribute('data-i18n', 'page_collections');
+        pageTitle.textContent = t('page_collections');
+      }
+      loadCollections();
+    } else if (viewName === 'wishlist') {
+      if (wishlistView) wishlistView.style.display = 'block';
+      if (pageTitle) {
+        pageTitle.setAttribute('data-i18n', 'page_wishlist');
+        pageTitle.textContent = t('page_wishlist');
+      }
+      loadWishlistItems();
     } else if (viewName === 'admin') {
       if (adminView) adminView.style.display = 'block';
       if (pageTitle) {
@@ -314,56 +427,140 @@ document.addEventListener('DOMContentLoaded', async () => {
     refreshIcons();
   };
 
-  // Função para carregar métricas agregadas do Admin sem expor dados pessoais ou imagens
+  // --- Painel Admin Overhaul e Analytics ---
   const loadAdminMetrics = async () => {
     if (!supabaseClient) return;
 
     if (metricUsersCount) metricUsersCount.textContent = '...';
     if (metricItemsCount) metricItemsCount.textContent = '...';
+    if (metricCombinationsCount) metricCombinationsCount.textContent = '...';
+    if (metricWishlistCount) metricWishlistCount.textContent = '...';
 
     try {
+      // 1. Total Registered Accounts
       let totalUsers = 0;
-      const { count: profilesCount, error: profilesErr } = await supabaseClient
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-
-      if (!profilesErr && profilesCount !== null) {
-        totalUsers = profilesCount;
+      const { data: rpcCount, error: rpcErr } = await supabaseClient.rpc('get_total_users_count');
+      if (!rpcErr && typeof rpcCount === 'number') {
+        totalUsers = rpcCount;
       } else {
-        totalUsers = 1;
-      }
-
-      let totalItems = 0;
-      const { count: itemsCount, error: itemsErr } = await supabaseClient
-        .from('roupas')
-        .select('*', { count: 'exact', head: true });
-
-      if (!itemsErr && itemsCount !== null) {
-        totalItems = itemsCount;
-      } else {
-        // Fallback para tabela alternativa caso exista
-        const { count: fallbackCount, error: fallbackErr } = await supabaseClient
-          .from('items')
+        const { count: profilesCount } = await supabaseClient
+          .from('profiles')
           .select('*', { count: 'exact', head: true });
-        if (!fallbackErr && fallbackCount !== null) {
-          totalItems = fallbackCount;
-        } else {
-          totalItems = 0;
-        }
+        totalUsers = profilesCount || 1;
       }
+
+      // 2. Active Pieces Count & Items Data
+      const { count: itemsCount, data: itemsData } = await supabaseClient
+        .from('roupas')
+        .select('*');
+
+      const totalItems = itemsCount || (itemsData ? itemsData.length : 0);
+
+      // 3. Combinations Count
+      const { count: combinationsCount } = await supabaseClient
+        .from('combinacoes')
+        .select('*', { count: 'exact', head: true });
+
+      const totalCombinations = combinationsCount || 0;
+
+      // 4. Wishlist Items Count
+      const { count: wishlistCount } = await supabaseClient
+        .from('wishlist')
+        .select('*', { count: 'exact', head: true });
+
+      const totalWishlist = wishlistCount || 0;
 
       if (metricUsersCount) metricUsersCount.textContent = totalUsers.toString();
       if (metricItemsCount) metricItemsCount.textContent = totalItems.toString();
+      if (metricCombinationsCount) metricCombinationsCount.textContent = totalCombinations.toString();
+      if (metricWishlistCount) metricWishlistCount.textContent = totalWishlist.toString();
+
+      // Render Minimalist Bar Charts matching neutral gray corporate theme
+      renderAdminCategoryChart(itemsData || []);
+      renderAdminOverviewChart(totalUsers, totalItems, totalCombinations, totalWishlist);
+
     } catch (err) {
       console.error('Erro ao carregar métricas admin:', err);
       if (metricUsersCount) metricUsersCount.textContent = '1';
       if (metricItemsCount) metricItemsCount.textContent = '0';
+      if (metricCombinationsCount) metricCombinationsCount.textContent = '0';
+      if (metricWishlistCount) metricWishlistCount.textContent = '0';
     }
+  };
+
+  // Render Bar Chart: Items by Category
+  const renderAdminCategoryChart = (items) => {
+    if (!adminCategoryChart) return;
+
+    if (!items || items.length === 0) {
+      adminCategoryChart.innerHTML = `<p style="font-size: 0.8125rem; color: var(--text-muted); text-align: center; padding: 24px;">Sem dados de categoria cadastrados.</p>`;
+      return;
+    }
+
+    const catCounts = {};
+    items.forEach(item => {
+      const cat = getCategoryTranslation(item.categoria || 'Outros');
+      catCounts[cat] = (catCounts[cat] || 0) + 1;
+    });
+
+    const entries = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
+    const maxVal = Math.max(...entries.map(e => e[1]), 1);
+
+    let html = `<div class="bar-chart-list">`;
+    entries.forEach(([cat, count]) => {
+      const pct = Math.round((count / maxVal) * 100);
+      html += `
+        <div class="bar-chart-item">
+          <div class="bar-chart-label-group">
+            <span class="bar-chart-label">${cat}</span>
+            <span class="bar-chart-value">${count}</span>
+          </div>
+          <div class="bar-chart-track">
+            <div class="bar-chart-fill" style="width: ${pct}%;"></div>
+          </div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+
+    adminCategoryChart.innerHTML = html;
+  };
+
+  // Render Overview Chart: System Proportions
+  const renderAdminOverviewChart = (users, items, combinations, wishlist) => {
+    if (!adminOverviewChart) return;
+
+    const metrics = [
+      { label: t('metric_users_label'), count: users, icon: 'users' },
+      { label: t('metric_items_label'), count: items, icon: 'shirt' },
+      { label: t('metric_combinations_label'), count: combinations, icon: 'sparkles' },
+      { label: t('metric_wishlist_label'), count: wishlist, icon: 'shopping-bag' }
+    ];
+
+    const maxVal = Math.max(...metrics.map(m => m.count), 1);
+
+    let html = `<div class="bar-chart-list">`;
+    metrics.forEach(m => {
+      const pct = Math.round((m.count / maxVal) * 100);
+      html += `
+        <div class="bar-chart-item">
+          <div class="bar-chart-label-group">
+            <span class="bar-chart-label">${m.label}</span>
+            <span class="bar-chart-value">${m.count}</span>
+          </div>
+          <div class="bar-chart-track">
+            <div class="bar-chart-fill" style="width: ${pct}%;"></div>
+          </div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+
+    adminOverviewChart.innerHTML = html;
   };
 
   // --- Handlers do Supabase Auth ---
 
-  // 1. Cadastro (signUp) - Com Redirecionamento Automático para Login
   if (signupForm) {
     signupForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -407,7 +604,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (error) {
         showAuthMessage(translateSupabaseError(error));
       } else {
-        // Limpa formulário de cadastro e redireciona para a tela de Login
         signupForm.reset();
         signupForm.style.display = 'none';
         loginForm.style.display = 'flex';
@@ -417,7 +613,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // 2. Login (signInWithPassword)
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -456,7 +651,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // 3. Logout (signOut)
   if (btnLogout) {
     btnLogout.addEventListener('click', async () => {
       if (supabaseClient) {
@@ -466,7 +660,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // --- Handlers do Modal de Alteração de Senha ---
+  // Modal de Senha
   if (btnOpenChangePasswordModal) {
     btnOpenChangePasswordModal.addEventListener('click', () => {
       clearPasswordModalMessage();
@@ -538,7 +732,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Verificação Inicial da Sessão e Ouvinte de Mudança de Estado de Auth
+  // Verificação Inicial da Sessão
   if (supabaseClient) {
     const { data: { session } } = await supabaseClient.auth.getSession();
     updateUIForSession(session);
@@ -559,7 +753,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // Event Listeners do Board View
+  // Event Listeners de Ações Rápidas
   if (btnCreateOutfit) {
     btnCreateOutfit.addEventListener('click', () => {
       showSection('board');
@@ -572,19 +766,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Ações rápidas do Dashboard
   const btnAddItem = document.getElementById('btn-quick-add-item');
-  const btnCreateCollection = document.getElementById('btn-quick-create-collection');
-
   if (btnAddItem) {
     btnAddItem.addEventListener('click', () => {
       openAddPieceModal();
     });
   }
 
-  // --- Lógica e Operações do Guarda-Roupa e Processamento Visual de Imagens ---
+  // --- Lógica e Operações do Guarda-Roupa e Processamento Visual ---
 
-  // Elementos do Processamento de Imagem
   const btnRemoveBg = document.getElementById('btn-remove-bg');
   const btnInvertSelection = document.getElementById('btn-invert-selection');
   const btnCropImage = document.getElementById('btn-crop-image');
@@ -592,7 +782,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnUndoOriginal = document.getElementById('btn-undo-original');
   const imageProcessingActions = document.getElementById('image-processing-actions');
 
-  // Elementos do Editor de Recorte Livre (Lápis/Laço e Borracha)
   const cropCanvasEditor = document.getElementById('crop-canvas-editor');
   const cropCanvasControls = document.getElementById('crop-canvas-controls');
   const btnToolLasso = document.getElementById('btn-tool-lasso');
@@ -603,11 +792,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnConfirmCrop = document.getElementById('btn-confirm-crop');
   const btnCancelCrop = document.getElementById('btn-cancel-crop');
 
-  let originalImageSrc = null; // Guarda a foto original sem processamento
-  let processedBlob = null; // Guarda o blob processado (.png com transparência)
+  let originalImageSrc = null;
+  let processedBlob = null;
 
-  // Estado do Editor de Canvas
-  let currentTool = 'lasso'; // 'lasso' | 'eraser'
+  let currentTool = 'lasso';
   let isDrawing = false;
   let pathPoints = [];
   let baseEditorImage = null;
@@ -625,7 +813,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (pieceImagePreview) pieceImagePreview.style.display = 'block';
   };
 
-  // Preview de Imagem selecionada no Modal
   if (pieceImageInput) {
     pieceImageInput.addEventListener('change', (e) => {
       closeCanvasEditor();
@@ -652,7 +839,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Helper para aplicar máscara Alpha preservando 100% os canais RGB originais da imagem
   const applyAlphaMaskFromBlob = (origSrc, maskBlob) => {
     return new Promise((resolve, reject) => {
       const origImg = new Image();
@@ -682,7 +868,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           const oPixels = origData.data;
           const mPixels = maskData.data;
 
-          // Aplica APENAS o canal Alpha da máscara, mantendo R, G e B 100% intactos
           for (let i = 0; i < oPixels.length; i += 4) {
             oPixels[i + 3] = mPixels[i + 3];
           }
@@ -709,7 +894,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   };
 
-  // Elementos da Barra de Progresso
   const bgRemoveProgressContainer = document.getElementById('bg-remove-progress-container');
   const bgRemoveProgressStatus = document.getElementById('bg-remove-progress-status');
   const bgRemoveProgressPercent = document.getElementById('bg-remove-progress-percent');
@@ -731,7 +915,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (bgRemoveProgressFill) bgRemoveProgressFill.style.width = '0%';
   };
 
-  // Helper para verificar suporte a WebAssembly
   const isWasmSupported = () => {
     try {
       if (typeof WebAssembly === 'object' && typeof WebAssembly.instantiate === 'function') {
@@ -746,7 +929,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return false;
   };
 
-  // Helper para detectar iOS / Mobile Safari
   const isIOSDevice = () => {
     const ua = navigator.userAgent || navigator.vendor || window.opera || '';
     const isMobileIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
@@ -754,7 +936,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return isMobileIOS || isMacTouch;
   };
 
-  // Helper para pré-escalar imagem em canvas reduzindo uso de memória RAM no iOS
   const scaleImageIfNeeded = (imageSrc, maxDimension = 1024) => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -795,7 +976,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   };
 
-  // Remoção de Fundo via @imgly/background-removal (com visual progress bar e fallback gracioso)
   if (btnRemoveBg) {
     btnRemoveBg.addEventListener('click', async () => {
       if (!pieceImagePreview || !pieceImagePreview.src) return;
@@ -815,7 +995,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       const imageSource = originalImageSrc || pieceImagePreview.src;
       updateBgProgress(5, t('bg_removing_progress'));
 
-      // Timer para progresso suave em caso de atraso na resposta
       let currentSimulated = 5;
       const progressInterval = setInterval(() => {
         if (currentSimulated < 85) {
@@ -828,15 +1007,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         let responseBlob = null;
 
-        // Verifica suporte a WebAssembly antes de tentar carregar/executar o @imgly
         if (!isWasmSupported()) {
           console.warn("WebAssembly não é suportado neste navegador/dispositivo.");
           showPieceModalMessage(t('bg_wasm_not_supported'), 'error');
         } else {
-          // 1. Tenta remoção de fundo via @imgly/background-removal com tratamento estrito e otimizações para iOS/Safari
           try {
             const isIOS = isIOSDevice();
-            // No iOS/Safari, reduz a resolução para economizar RAM e evitar estouro de memória no Web Worker/WASM
             const sourceForImgly = isIOS ? await scaleImageIfNeeded(imageSource, 1024) : imageSource;
 
             const imglyModule = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/+esm');
@@ -844,7 +1020,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (typeof removeBackground === 'function') {
               const imglyConfig = {
-                // Modelo com quantização int8 para consumo menor de RAM no iOS / Mobile Safari
                 model: isIOS ? 'isnet_quint8' : 'isnet_fp16',
                 device: 'cpu',
                 progress: (key, current, total) => {
@@ -864,64 +1039,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
 
-        // 2. Fallback via Hugging Face Inference API se @imgly falhar
-        if (!responseBlob) {
-          let hfApiKey = '';
-          try {
-            if (typeof import.meta !== 'undefined' && import.meta && import.meta.env) {
-              hfApiKey = import.meta.env.VITE_HUGGINGFACE_API_KEY || '';
-            }
-          } catch (e) {
-            hfApiKey = '';
-          }
-
-          if (hfApiKey) {
-            try {
-              updateBgProgress(60, t('bg_processing_image'));
-              const imgRes = await fetch(imageSource);
-              const imgBlob = await imgRes.blob();
-
-              const hfRes = await fetch("https://api-inference.huggingface.co/models/briaai/RMBG-1.4", {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${hfApiKey}`,
-                  "Content-Type": "application/octet-stream"
-                },
-                body: imgBlob
-              });
-
-              if (hfRes.ok) {
-                const resBlob = await hfRes.blob();
-                if (!hfRes.headers.get("X-Fallback") && resBlob.type.includes("image")) {
-                  responseBlob = resBlob;
-                }
-              }
-            } catch (hfErr) {
-              console.warn("Falha ao chamar Hugging Face:", hfErr);
-            }
-          }
-        }
-
-        // 3. Fallback para Supabase Edge Function
-        if (!responseBlob && supabaseClient && supabaseClient.functions) {
-          try {
-            updateBgProgress(75, t('bg_processing_image'));
-            const { data, error } = await supabaseClient.functions.invoke('remove-background', {
-              body: { image: imageSource }
-            });
-            if (!error && data) {
-              responseBlob = data instanceof Blob ? data : new Blob([data], { type: 'image/png' });
-            }
-          } catch (edgeErr) {
-            console.warn("Falha ao chamar Edge Function:", edgeErr);
-          }
-        }
-
         clearInterval(progressInterval);
 
         if (responseBlob) {
           updateBgProgress(90, t('bg_processing_image'));
-          // Garante que APENAS o canal Alpha seja aplicado, preservando os canais RGB originais intactos
           const compositedBlob = await applyAlphaMaskFromBlob(imageSource, responseBlob);
           processedBlob = compositedBlob;
           const newUrl = URL.createObjectURL(compositedBlob);
@@ -951,7 +1072,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Inverter Seleção (Togglamento da Máscara de Transparência)
   if (btnInvertSelection) {
     btnInvertSelection.addEventListener('click', () => {
       if (!pieceImagePreview || !pieceImagePreview.src || !originalImageSrc) {
@@ -1013,7 +1133,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Desfazer / Restaurar Foto Original
   if (btnUndoOriginal) {
     btnUndoOriginal.addEventListener('click', () => {
       if (originalImageSrc) {
@@ -1027,304 +1146,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // --- Lógica da Ferramenta de Recorte Livre (Lápis / Laço e Borracha) ---
-
-  // Atualizar exibição de espessura
-  if (brushSizeSlider && brushSizeVal) {
-    brushSizeSlider.addEventListener('input', (e) => {
-      brushSizeVal.textContent = `${e.target.value}px`;
+  // --- Lógica de Abas do Guarda-Roupa (Peças Ativas vs Arquivadas) ---
+  if (tabBtnActive && tabBtnArchived) {
+    tabBtnActive.addEventListener('click', () => {
+      wardrobeMode = 'active';
+      tabBtnActive.classList.add('active');
+      tabBtnArchived.classList.remove('active');
+      loadWardrobeItems();
     });
-  }
 
-  // Alternar Modos de Ferramenta
-  if (btnToolLasso) {
-    btnToolLasso.addEventListener('click', () => {
-      currentTool = 'lasso';
-      btnToolLasso.classList.add('active-tool');
-      if (btnToolEraser) btnToolEraser.classList.remove('active-tool');
-    });
-  }
-
-  if (btnToolEraser) {
-    btnToolEraser.addEventListener('click', () => {
-      currentTool = 'eraser';
-      if (btnToolEraser) btnToolEraser.classList.add('active-tool');
-      if (btnToolLasso) btnToolLasso.classList.remove('active-tool');
-    });
-  }
-
-  // Redesenhar a imagem base e elementos visuais no canvas
-  const redrawCanvasEditor = (cursorCoords = null) => {
-    if (!cropCanvasEditor || !offscreenCanvas) return;
-    const ctx = cropCanvasEditor.getContext('2d');
-    ctx.clearRect(0, 0, cropCanvasEditor.width, cropCanvasEditor.height);
-    ctx.drawImage(offscreenCanvas, 0, 0);
-
-    // Desenha vetor do laço se estiver usando a ferramenta Lasso
-    if (currentTool === 'lasso' && pathPoints.length > 0) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
-      for (let i = 1; i < pathPoints.length; i++) {
-        ctx.lineTo(pathPoints[i].x, pathPoints[i].y);
-      }
-
-      const lineThick = parseInt(brushSizeSlider ? brushSizeSlider.value : '4', 10);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = lineThick + 2;
-      ctx.stroke();
-
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = lineThick;
-      ctx.setLineDash([6, 4]);
-      ctx.stroke();
-
-      if (pathPoints.length > 2) {
-        ctx.beginPath();
-        ctx.moveTo(pathPoints[pathPoints.length - 1].x, pathPoints[pathPoints.length - 1].y);
-        ctx.lineTo(pathPoints[0].x, pathPoints[0].y);
-        ctx.strokeStyle = '#22c55e';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
-
-    // Desenha cursor indicador da Borracha
-    if (currentTool === 'eraser' && cursorCoords) {
-      const thick = parseInt(brushSizeSlider ? brushSizeSlider.value : '20', 10);
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(cursorCoords.x, cursorCoords.y, thick / 2, 0, Math.PI * 2);
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(cursorCoords.x, cursorCoords.y, thick / 2 + 1, 0, Math.PI * 2);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.restore();
-    }
-  };
-
-  // Obter coordenadas de clique/toque mapeadas para as dimensões internas do canvas
-  const getCanvasCoords = (e, canvas) => {
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY
-    };
-  };
-
-  const applyEraserStroke = (p1, p2) => {
-    if (!offscreenCanvas) return;
-    const offCtx = offscreenCanvas.getContext('2d');
-    const thick = parseInt(brushSizeSlider ? brushSizeSlider.value : '20', 10);
-
-    offCtx.save();
-    offCtx.globalCompositeOperation = 'destination-out';
-    offCtx.lineWidth = thick;
-    offCtx.lineCap = 'round';
-    offCtx.lineJoin = 'round';
-
-    offCtx.beginPath();
-    if (p1) {
-      offCtx.moveTo(p1.x, p1.y);
-      offCtx.lineTo(p2.x, p2.y);
-    } else {
-      offCtx.arc(p2.x, p2.y, thick / 2, 0, Math.PI * 2);
-    }
-    offCtx.stroke();
-    offCtx.restore();
-  };
-
-  if (cropCanvasEditor) {
-    const startDraw = (e) => {
-      isDrawing = true;
-      const coords = getCanvasCoords(e, cropCanvasEditor);
-      lastCoord = coords;
-
-      if (currentTool === 'lasso') {
-        pathPoints = [coords];
-        redrawCanvasEditor(coords);
-      } else if (currentTool === 'eraser') {
-        applyEraserStroke(null, coords);
-        redrawCanvasEditor(coords);
-      }
-    };
-
-    const moveDraw = (e) => {
-      const coords = getCanvasCoords(e, cropCanvasEditor);
-      if (e.touches && isDrawing) e.preventDefault();
-
-      if (isDrawing) {
-        if (currentTool === 'lasso') {
-          pathPoints.push(coords);
-          redrawCanvasEditor(coords);
-        } else if (currentTool === 'eraser') {
-          applyEraserStroke(lastCoord, coords);
-          lastCoord = coords;
-          redrawCanvasEditor(coords);
-        }
-      } else {
-        if (currentTool === 'eraser') {
-          redrawCanvasEditor(coords);
-        }
-      }
-    };
-
-    const stopDraw = () => {
-      isDrawing = false;
-      lastCoord = null;
-      redrawCanvasEditor();
-    };
-
-    cropCanvasEditor.addEventListener('mousedown', startDraw);
-    cropCanvasEditor.addEventListener('mousemove', moveDraw);
-    cropCanvasEditor.addEventListener('mouseup', stopDraw);
-    cropCanvasEditor.addEventListener('mouseleave', stopDraw);
-
-    cropCanvasEditor.addEventListener('touchstart', startDraw, { passive: false });
-    cropCanvasEditor.addEventListener('touchmove', moveDraw, { passive: false });
-    cropCanvasEditor.addEventListener('touchend', stopDraw);
-  }
-
-  // Inicializar o Editor de Canvas em modo Laço ou Borracha
-  const openCanvasEditorWithTool = (toolName) => {
-    if (!pieceImagePreview || !pieceImagePreview.src) return;
-
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = () => {
-      baseEditorImage = img;
-      pathPoints = [];
-      isDrawing = false;
-      lastCoord = null;
-      currentTool = toolName;
-
-      cropCanvasEditor.width = img.naturalWidth || img.width;
-      cropCanvasEditor.height = img.naturalHeight || img.height;
-
-      offscreenCanvas = document.createElement('canvas');
-      offscreenCanvas.width = cropCanvasEditor.width;
-      offscreenCanvas.height = cropCanvasEditor.height;
-      const offCtx = offscreenCanvas.getContext('2d');
-      offCtx.drawImage(img, 0, 0);
-
-      if (toolName === 'lasso') {
-        if (btnToolLasso) btnToolLasso.classList.add('active-tool');
-        if (btnToolEraser) btnToolEraser.classList.remove('active-tool');
-      } else {
-        if (btnToolEraser) btnToolEraser.classList.add('active-tool');
-        if (btnToolLasso) btnToolLasso.classList.remove('active-tool');
-      }
-
-      redrawCanvasEditor();
-
-      if (pieceImagePreview) pieceImagePreview.style.display = 'none';
-      if (imageProcessingActions) imageProcessingActions.style.display = 'none';
-      if (cropCanvasEditor) cropCanvasEditor.style.display = 'block';
-      if (cropCanvasControls) cropCanvasControls.style.display = 'flex';
-      refreshIcons();
-    };
-    img.src = pieceImagePreview.src;
-  };
-
-  if (btnCropImage) {
-    btnCropImage.addEventListener('click', () => {
-      openCanvasEditorWithTool('lasso');
-    });
-  }
-
-  if (btnEraserDirect) {
-    btnEraserDirect.addEventListener('click', () => {
-      openCanvasEditorWithTool('eraser');
-    });
-  }
-
-  // Limpar Traço
-  if (btnClearTrace) {
-    btnClearTrace.addEventListener('click', () => {
-      pathPoints = [];
-      if (baseEditorImage && offscreenCanvas) {
-        const offCtx = offscreenCanvas.getContext('2d');
-        offCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-        offCtx.drawImage(baseEditorImage, 0, 0);
-        redrawCanvasEditor();
-      }
-    });
-  }
-
-  // Confirmar Edição/Borracha/Recorte Livre preservando 100% RGB da imagem original
-  if (btnConfirmCrop) {
-    btnConfirmCrop.addEventListener('click', async () => {
-      if (!cropCanvasEditor || !baseEditorImage || !offscreenCanvas) return;
-
-      if (pathPoints.length > 2 && currentTool === 'lasso') {
-        const width = baseEditorImage.naturalWidth || baseEditorImage.width;
-        const height = baseEditorImage.naturalHeight || baseEditorImage.height;
-
-        const lassoMaskCanvas = document.createElement('canvas');
-        lassoMaskCanvas.width = width;
-        lassoMaskCanvas.height = height;
-        const lCtx = lassoMaskCanvas.getContext('2d');
-
-        lCtx.beginPath();
-        lCtx.moveTo(pathPoints[0].x, pathPoints[0].y);
-        for (let i = 1; i < pathPoints.length; i++) {
-          lCtx.lineTo(pathPoints[i].x, pathPoints[i].y);
-        }
-        lCtx.closePath();
-        lCtx.fillStyle = '#ffffff';
-        lCtx.fill();
-
-        lassoMaskCanvas.toBlob(async (maskBlob) => {
-          if (maskBlob) {
-            try {
-              const imageSource = originalImageSrc || pieceImagePreview.src;
-              const compositedBlob = await applyAlphaMaskFromBlob(imageSource, maskBlob);
-              processedBlob = compositedBlob;
-              const croppedUrl = URL.createObjectURL(compositedBlob);
-              closeCanvasEditor();
-              pieceImagePreview.src = croppedUrl;
-              showPieceModalMessage('Recorte livre aplicado com sucesso!', 'success');
-            } catch (err) {
-              console.error('Erro ao aplicar corte:', err);
-            }
-          }
-        }, 'image/png');
-      } else {
-        // Se a edição foi feita via Borracha ou sem laço definido
-        offscreenCanvas.toBlob(async (maskBlob) => {
-          if (maskBlob) {
-            try {
-              const imageSource = originalImageSrc || pieceImagePreview.src;
-              const compositedBlob = await applyAlphaMaskFromBlob(imageSource, maskBlob);
-              processedBlob = compositedBlob;
-              const croppedUrl = URL.createObjectURL(compositedBlob);
-              closeCanvasEditor();
-              pieceImagePreview.src = croppedUrl;
-              showPieceModalMessage('Edição/Borracha aplicada com sucesso!', 'success');
-            } catch (err) {
-              console.error('Erro ao confirmar edição:', err);
-            }
-          }
-        }, 'image/png');
-      }
-    });
-  }
-
-  // Cancelar Recorte
-  if (btnCancelCrop) {
-    btnCancelCrop.addEventListener('click', () => {
-      closeCanvasEditor();
+    tabBtnArchived.addEventListener('click', () => {
+      wardrobeMode = 'archived';
+      tabBtnArchived.classList.add('active');
+      tabBtnActive.classList.remove('active');
+      loadWardrobeItems();
     });
   }
 
@@ -1371,13 +1206,82 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && modalAddPiece && modalAddPiece.style.display === 'flex') {
-      closeAddPieceModal();
-    }
-  });
+  // --- Lógica de Edição de Peça Existente ---
+  const openEditPieceModal = (piece) => {
+    clearEditPieceModalMessage();
+    if (editPieceIdInput) editPieceIdInput.value = piece.id;
+    if (editPieceNomeInput) editPieceNomeInput.value = piece.nome || '';
+    if (editPieceCategoriaInput) editPieceCategoriaInput.value = piece.categoria || '';
+    if (editPieceCorInput) editPieceCorInput.value = piece.cor || '';
+    if (editPieceEstacaoInput) editPieceEstacaoInput.value = piece.estacao || '';
+    if (editPieceFormalidadeInput) editPieceFormalidadeInput.value = piece.formalidade || '';
+    if (editPieceMarcaInput) editPieceMarcaInput.value = piece.marca || '';
+    if (editPieceTamanhoInput) editPieceTamanhoInput.value = piece.tamanho || '';
 
-  // Event Delegation global para gatilhos de cadastro de peça
+    if (modalEditPiece) modalEditPiece.style.display = 'flex';
+  };
+
+  const closeEditPieceModal = () => {
+    if (modalEditPiece) modalEditPiece.style.display = 'none';
+    clearEditPieceModalMessage();
+    if (editPieceForm) editPieceForm.reset();
+  };
+
+  if (btnCloseEditPieceModal) btnCloseEditPieceModal.addEventListener('click', closeEditPieceModal);
+  if (btnCancelEditPiece) btnCancelEditPiece.addEventListener('click', closeEditPieceModal);
+
+  if (editPieceForm) {
+    editPieceForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearEditPieceModalMessage();
+
+      const id = editPieceIdInput.value;
+      const nome = editPieceNomeInput.value.trim();
+      const categoria = editPieceCategoriaInput.value.trim();
+      const cor = editPieceCorInput.value.trim();
+      const estacao = editPieceEstacaoInput.value;
+      const formalidade = editPieceFormalidadeInput.value;
+      const marca = editPieceMarcaInput.value.trim();
+      const tamanho = editPieceTamanhoInput.value.trim();
+
+      if (!id || !nome || !categoria) {
+        showEditPieceModalMessage(t('piece_name_category_required'));
+        return;
+      }
+
+      btnSubmitEditPiece.disabled = true;
+      btnSubmitEditPiece.querySelector('span').textContent = t('btn_updating_piece');
+
+      const { error } = await supabaseClient
+        .from('roupas')
+        .update({
+          nome,
+          categoria,
+          cor: cor || null,
+          estacao: estacao || null,
+          formalidade: formalidade || null,
+          marca: marca || null,
+          tamanho: tamanho || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      btnSubmitEditPiece.disabled = false;
+      btnSubmitEditPiece.querySelector('span').textContent = t('btn_update_piece');
+
+      if (error) {
+        showEditPieceModalMessage(translateSupabaseError(error));
+      } else {
+        showEditPieceModalMessage(t('piece_updated_success'), 'success');
+        setTimeout(() => {
+          closeEditPieceModal();
+          loadWardrobeItems();
+        }, 1000);
+      }
+    });
+  }
+
+  // Event Delegation global para gatilhos de cadastro
   document.addEventListener('click', (e) => {
     const triggerBtn = e.target.closest('[data-action="open-add-piece"]');
     if (triggerBtn) {
@@ -1386,7 +1290,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Atualizar Datalist Autocomplete de Categorias
+  // Atualizar Datalist Autocomplete de Categorias (suportando novas categorias personalizadas)
   const updateCategoriesDatalist = (existingCategories) => {
     if (!categoriesDatalist) return;
     const defaultCategories = [
@@ -1415,7 +1319,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       .join('');
   };
 
-  // Carregar e Renderizar Peças do Guarda-Roupa Agrupadas por Categoria
+  // Carregar e Renderizar Peças do Guarda-Roupa Agrupadas por Categoria (Ativas vs Arquivadas)
   const loadWardrobeItems = async () => {
     if (!supabaseClient || !currentUser) return;
     if (!wardrobeCategoriesContainer) return;
@@ -1435,26 +1339,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      if (!roupas || roupas.length === 0) {
-        wardrobeCategoriesContainer.innerHTML = `
-          <div class="empty-wardrobe-card">
-            <i data-lucide="shirt" class="empty-wardrobe-icon"></i>
-            <h4 class="card-title" data-i18n="empty_wardrobe_title">${t('empty_wardrobe_title')}</h4>
-            <p class="card-desc" data-i18n="empty_wardrobe_desc">${t('empty_wardrobe_desc')}</p>
-            <button class="btn btn-primary" data-action="open-add-piece" style="margin-top: 16px;">
-              <i data-lucide="plus" class="icon"></i>
-              <span data-i18n="btn_add_piece">${t('btn_add_piece')}</span>
-            </button>
-          </div>
-        `;
-        updateCategoriesDatalist([]);
+      const allCategories = (roupas || []).map(r => r.categoria);
+      updateCategoriesDatalist(allCategories);
+
+      // Filtra conforme a aba selecionada (Ativas vs Arquivadas)
+      const filteredRoupas = (roupas || []).filter(item => {
+        if (wardrobeMode === 'archived') {
+          return item.status === 'Arquivado';
+        } else {
+          return item.status !== 'Arquivado';
+        }
+      });
+
+      if (filteredRoupas.length === 0) {
+        if (wardrobeMode === 'archived') {
+          wardrobeCategoriesContainer.innerHTML = `
+            <div class="empty-wardrobe-card">
+              <i data-lucide="archive" class="empty-wardrobe-icon"></i>
+              <h4 class="card-title" data-i18n="empty_archived_title">${t('empty_archived_title')}</h4>
+              <p class="card-desc" data-i18n="empty_archived_desc">${t('empty_archived_desc')}</p>
+            </div>
+          `;
+        } else {
+          wardrobeCategoriesContainer.innerHTML = `
+            <div class="empty-wardrobe-card">
+              <i data-lucide="shirt" class="empty-wardrobe-icon"></i>
+              <h4 class="card-title" data-i18n="empty_wardrobe_title">${t('empty_wardrobe_title')}</h4>
+              <p class="card-desc" data-i18n="empty_wardrobe_desc">${t('empty_wardrobe_desc')}</p>
+              <button class="btn btn-primary" data-action="open-add-piece" style="margin-top: 16px;">
+                <i data-lucide="plus" class="icon"></i>
+                <span data-i18n="btn_add_piece">${t('btn_add_piece')}</span>
+              </button>
+            </div>
+          `;
+        }
         refreshIcons();
         return;
       }
 
       // Agrupa peças por Categoria
       const grouped = {};
-      roupas.forEach(item => {
+      filteredRoupas.forEach(item => {
         const cat = item.categoria ? item.categoria.trim() : 'Outros';
         if (!grouped[cat]) {
           grouped[cat] = [];
@@ -1462,10 +1387,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         grouped[cat].push(item);
       });
 
-      // Atualiza datalist autocomplete com categorias existentes
-      updateCategoriesDatalist(Object.keys(grouped));
-
-      // Limpa container e renderiza cada grupo de categoria
       wardrobeCategoriesContainer.innerHTML = '';
 
       Object.keys(grouped).forEach(categoryName => {
@@ -1508,6 +1429,28 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (piece.marca) detailsTags += `<span class="piece-tag">${piece.marca}</span>`;
           if (piece.tamanho) detailsTags += `<span class="piece-tag">${t('piece_tamanho_label')}: ${piece.tamanho}</span>`;
 
+          const actionsHtml = wardrobeMode === 'archived'
+            ? `
+              <div class="piece-actions">
+                <button class="btn btn-secondary btn-sm btn-restore-piece" data-id="${piece.id}" data-name="${piece.nome}">
+                  <i data-lucide="rotate-ccw" class="icon-sm"></i>
+                  <span>${t('btn_restore_piece')}</span>
+                </button>
+              </div>
+            `
+            : `
+              <div class="piece-actions">
+                <button class="btn btn-secondary btn-sm btn-edit-piece" data-id="${piece.id}">
+                  <i data-lucide="pencil" class="icon-sm"></i>
+                  <span>${t('btn_edit_piece')}</span>
+                </button>
+                <button class="btn btn-secondary btn-sm btn-archive-piece" data-id="${piece.id}" data-name="${piece.nome}">
+                  <i data-lucide="archive" class="icon-sm"></i>
+                  <span>${t('btn_archive_piece')}</span>
+                </button>
+              </div>
+            `;
+
           cardEl.innerHTML = `
             <div class="piece-image-wrapper">
               ${imgHtml}
@@ -1515,8 +1458,53 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="piece-info">
               <h5 class="piece-title">${piece.nome}</h5>
               ${detailsTags ? `<div class="piece-details">${detailsTags}</div>` : ''}
+              ${actionsHtml}
             </div>
           `;
+
+          // Bind Edit button
+          const btnEdit = cardEl.querySelector('.btn-edit-piece');
+          if (btnEdit) {
+            btnEdit.addEventListener('click', () => openEditPieceModal(piece));
+          }
+
+          // Bind Archive (Soft Delete) button
+          const btnArchive = cardEl.querySelector('.btn-archive-piece');
+          if (btnArchive) {
+            btnArchive.addEventListener('click', async () => {
+              if (confirm(t('confirm_archive_piece', { name: piece.nome }))) {
+                const { error } = await supabaseClient
+                  .from('roupas')
+                  .update({ status: 'Arquivado', updated_at: new Date().toISOString() })
+                  .eq('id', piece.id);
+
+                if (error) {
+                  alert(translateSupabaseError(error));
+                } else {
+                  loadWardrobeItems();
+                }
+              }
+            });
+          }
+
+          // Bind Restore button
+          const btnRestore = cardEl.querySelector('.btn-restore-piece');
+          if (btnRestore) {
+            btnRestore.addEventListener('click', async () => {
+              if (confirm(t('confirm_restore_piece', { name: piece.nome }))) {
+                const { error } = await supabaseClient
+                  .from('roupas')
+                  .update({ status: 'Ativo', updated_at: new Date().toISOString() })
+                  .eq('id', piece.id);
+
+                if (error) {
+                  alert(translateSupabaseError(error));
+                } else {
+                  loadWardrobeItems();
+                }
+              }
+            });
+          }
 
           gridEl.appendChild(cardEl);
         });
@@ -1564,7 +1552,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       let publicImageUrl = null;
 
-      // Upload de Imagem para o bucket 'roupas' no Supabase Storage com user_id explícito na estrutura de diretório
       const imageFile = pieceImageInput.files[0];
       if (processedBlob || imageFile) {
         try {
@@ -1588,7 +1575,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
           }
 
-          // Obter URL pública
           const { data: publicUrlData } = supabaseClient
             .storage
             .from('roupas')
@@ -1606,7 +1592,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
-      // Gravação dos Dados da Peça na tabela public.roupas com user_id do utilizador associado
       const { data: insertedPiece, error: insertErr } = await supabaseClient
         .from('roupas')
         .insert({
@@ -1639,14 +1624,493 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  if (btnCreateCollection) {
-    btnCreateCollection.addEventListener('click', () => {
-      console.log('Ação rápida: Criar Coleção iniciada.');
+  // --- Coleções (Collections Feature) ---
+  const openAddCollectionModal = () => {
+    clearCollectionModalMessage();
+    if (addCollectionForm) addCollectionForm.reset();
+    if (modalAddCollection) modalAddCollection.style.display = 'flex';
+  };
+
+  const closeAddCollectionModal = () => {
+    if (modalAddCollection) modalAddCollection.style.display = 'none';
+    clearCollectionModalMessage();
+    if (addCollectionForm) addCollectionForm.reset();
+  };
+
+  if (btnCloseCollectionModal) btnCloseCollectionModal.addEventListener('click', closeAddCollectionModal);
+  if (btnCancelCollection) btnCancelCollection.addEventListener('click', closeAddCollectionModal);
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="open-add-collection"]');
+    if (btn) {
+      e.preventDefault();
+      openAddCollectionModal();
+    }
+  });
+
+  if (addCollectionForm) {
+    addCollectionForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearCollectionModalMessage();
+
+      const nome = collectionNomeInput.value.trim();
+      const descricao = collectionDescInput.value.trim();
+
+      if (!nome) {
+        showCollectionModalMessage(t('collection_name_required'));
+        return;
+      }
+
+      btnSubmitCollection.disabled = true;
+      btnSubmitCollection.querySelector('span').textContent = t('btn_saving_collection');
+
+      const { error } = await supabaseClient
+        .from('colecoes')
+        .insert({
+          user_id: currentUser.id,
+          nome,
+          descricao: descricao || null
+        });
+
+      btnSubmitCollection.disabled = false;
+      btnSubmitCollection.querySelector('span').textContent = t('btn_save_collection');
+
+      if (error) {
+        showCollectionModalMessage(translateSupabaseError(error));
+      } else {
+        showCollectionModalMessage(t('collection_create_success'), 'success');
+        setTimeout(() => {
+          closeAddCollectionModal();
+          loadCollections();
+        }, 1000);
+      }
     });
   }
 
+  // Carregar e Renderizar Coleções
+  const loadCollections = async () => {
+    if (!supabaseClient || !currentUser || !collectionsGrid) return;
+
+    collectionsGrid.innerHTML = '<p style="text-align: center; color: var(--text-muted); grid-column: 1 / -1;">Carregando coleções...</p>';
+
+    try {
+      const { data: colecoes, error } = await supabaseClient
+        .from('colecoes')
+        .select('*, colecao_combinacoes(combinacao_id)')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar coleções:', error);
+        collectionsGrid.innerHTML = `<p style="text-align: center; color: var(--error-text); grid-column: 1 / -1;">${translateSupabaseError(error)}</p>`;
+        return;
+      }
+
+      if (!colecoes || colecoes.length === 0) {
+        collectionsGrid.innerHTML = `
+          <div class="empty-wardrobe-card" style="grid-column: 1 / -1;">
+            <i data-lucide="folder-heart" class="empty-wardrobe-icon"></i>
+            <h4 class="card-title" data-i18n="empty_collections_title">${t('empty_collections_title')}</h4>
+            <p class="card-desc" data-i18n="empty_collections_desc">${t('empty_collections_desc')}</p>
+            <button class="btn btn-primary" data-action="open-add-collection" style="margin-top: 16px;">
+              <i data-lucide="folder-plus" class="icon"></i>
+              <span data-i18n="btn_new_collection">${t('btn_new_collection')}</span>
+            </button>
+          </div>
+        `;
+        refreshIcons();
+        return;
+      }
+
+      collectionsGrid.innerHTML = '';
+
+      colecoes.forEach(col => {
+        const outfitCount = col.colecao_combinacoes ? col.colecao_combinacoes.length : 0;
+        const cardEl = document.createElement('div');
+        cardEl.className = 'card collection-card';
+
+        cardEl.innerHTML = `
+          <div class="collection-header">
+            <div class="collection-title-group">
+              <i data-lucide="folder-heart" class="icon collection-icon"></i>
+              <h4 class="card-title">${col.nome}</h4>
+            </div>
+            <button class="btn-icon btn-delete-collection" data-id="${col.id}" data-name="${col.nome}" title="Excluir Coleção">
+              <i data-lucide="trash-2" class="icon"></i>
+            </button>
+          </div>
+          <p class="card-desc">${col.descricao || ''}</p>
+          <div class="collection-badge-group">
+            <span class="piece-tag">${t('collection_outfits_count', { count: outfitCount })}</span>
+          </div>
+          <button class="btn btn-secondary btn-manage-collection" data-id="${col.id}" data-name="${col.nome}">
+            <i data-lucide="sparkles" class="icon"></i>
+            <span>${t('btn_add_combinations_to_collection')}</span>
+          </button>
+        `;
+
+        const btnDelete = cardEl.querySelector('.btn-delete-collection');
+        if (btnDelete) {
+          btnDelete.addEventListener('click', async () => {
+            if (confirm(t('confirm_delete_collection', { name: col.nome }))) {
+              const { error: delErr } = await supabaseClient
+                .from('colecoes')
+                .delete()
+                .eq('id', col.id);
+
+              if (delErr) {
+                alert(translateSupabaseError(delErr));
+              } else {
+                loadCollections();
+              }
+            }
+          });
+        }
+
+        const btnManage = cardEl.querySelector('.btn-manage-collection');
+        if (btnManage) {
+          btnManage.addEventListener('click', () => {
+            openManageCollectionModal(col.id, col.nome);
+          });
+        }
+
+        collectionsGrid.appendChild(cardEl);
+      });
+
+      refreshIcons();
+    } catch (err) {
+      console.error('Erro ao carregar coleções:', err);
+    }
+  };
+
+  // Modal para Gerenciar Combinações da Coleção
+  const openManageCollectionModal = async (collectionId, collectionName) => {
+    currentManagingCollectionId = collectionId;
+    if (manageCollectionTitle) manageCollectionTitle.textContent = t('modal_manage_collection_outfits_title', { name: collectionName });
+    if (collectionOutfitsSelectorList) collectionOutfitsSelectorList.innerHTML = 'Carregando combinações...';
+
+    if (modalManageCollection) modalManageCollection.style.display = 'flex';
+
+    try {
+      // Fetch user combinations
+      const { data: combinacoes } = await supabaseClient
+        .from('combinacoes')
+        .select('*')
+        .eq('user_id', currentUser.id);
+
+      // Fetch junction rows for this collection
+      const { data: junctions } = await supabaseClient
+        .from('colecao_combinacoes')
+        .select('combinacao_id')
+        .eq('colecao_id', collectionId);
+
+      const attachedIds = new Set((junctions || []).map(j => j.combinacao_id));
+
+      if (!combinacoes || combinacoes.length === 0) {
+        collectionOutfitsSelectorList.innerHTML = `<p style="color: var(--text-muted); padding: 12px;">${t('no_saved_combinations')}</p>`;
+        return;
+      }
+
+      collectionOutfitsSelectorList.innerHTML = '';
+      combinacoes.forEach(comb => {
+        const itemEl = document.createElement('label');
+        itemEl.className = 'collection-outfit-checkbox-item';
+        const isChecked = attachedIds.has(comb.id);
+
+        itemEl.innerHTML = `
+          <input type="checkbox" value="${comb.id}" ${isChecked ? 'checked' : ''}>
+          <span>${comb.nome}</span>
+        `;
+        collectionOutfitsSelectorList.appendChild(itemEl);
+      });
+    } catch (err) {
+      console.error('Erro ao abrir gerenciamento de coleção:', err);
+    }
+  };
+
+  const closeManageCollectionModal = () => {
+    if (modalManageCollection) modalManageCollection.style.display = 'none';
+    currentManagingCollectionId = null;
+  };
+
+  if (btnCloseManageCollectionModal) btnCloseManageCollectionModal.addEventListener('click', closeManageCollectionModal);
+
+  if (btnSaveCollectionOutfits) {
+    btnSaveCollectionOutfits.addEventListener('click', async () => {
+      if (!currentManagingCollectionId) return;
+
+      const checkboxes = collectionOutfitsSelectorList.querySelectorAll('input[type="checkbox"]');
+      const selectedIds = [];
+      checkboxes.forEach(cb => {
+        if (cb.checked) selectedIds.push(cb.value);
+      });
+
+      btnSaveCollectionOutfits.disabled = true;
+
+      try {
+        // Clear existing junction rows
+        await supabaseClient
+          .from('colecao_combinacoes')
+          .delete()
+          .eq('colecao_id', currentManagingCollectionId);
+
+        // Insert new junction rows
+        if (selectedIds.length > 0) {
+          const rowsToInsert = selectedIds.map(combId => ({
+            colecao_id: currentManagingCollectionId,
+            combinacao_id: combId
+          }));
+          await supabaseClient.from('colecao_combinacoes').insert(rowsToInsert);
+        }
+
+        btnSaveCollectionOutfits.disabled = false;
+        closeManageCollectionModal();
+        loadCollections();
+      } catch (err) {
+        console.error('Erro ao salvar combinações da coleção:', err);
+        btnSaveCollectionOutfits.disabled = false;
+      }
+    });
+  }
+
+  // --- Wishlist Feature ---
+  const openAddWishlistModal = () => {
+    clearWishlistModalMessage();
+    if (addWishlistForm) addWishlistForm.reset();
+    if (wishlistImagePreview) wishlistImagePreview.src = '';
+    if (wishlistImagePreviewContainer) wishlistImagePreviewContainer.style.display = 'none';
+    if (modalAddWishlist) modalAddWishlist.style.display = 'flex';
+  };
+
+  const closeAddWishlistModal = () => {
+    if (modalAddWishlist) modalAddWishlist.style.display = 'none';
+    clearWishlistModalMessage();
+    if (addWishlistForm) addWishlistForm.reset();
+  };
+
+  if (btnCloseWishlistModal) btnCloseWishlistModal.addEventListener('click', closeAddWishlistModal);
+  if (btnCancelWishlist) btnCancelWishlist.addEventListener('click', closeAddWishlistModal);
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="open-add-wishlist"]');
+    if (btn) {
+      e.preventDefault();
+      openAddWishlistModal();
+    }
+  });
+
+  if (wishlistImageInput) {
+    wishlistImageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (wishlistImagePreview) wishlistImagePreview.src = event.target.result;
+          if (wishlistImagePreviewContainer) wishlistImagePreviewContainer.style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  if (addWishlistForm) {
+    addWishlistForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearWishlistModalMessage();
+
+      const nome = wishlistNomeInput.value.trim();
+      const categoria = wishlistCategoriaInput.value.trim();
+      const preco = wishlistPrecoInput.value ? parseFloat(wishlistPrecoInput.value) : null;
+      const link = wishlistLinkInput.value.trim();
+      const obs = wishlistObservacoesInput.value.trim();
+
+      if (!nome) {
+        showWishlistModalMessage(t('piece_name_category_required'));
+        return;
+      }
+
+      btnSubmitWishlist.disabled = true;
+      btnSubmitWishlist.querySelector('span').textContent = t('btn_saving_wishlist');
+
+      let publicImageUrl = null;
+      const imageFile = wishlistImageInput.files[0];
+      if (imageFile) {
+        try {
+          const fileName = `wishlist_${currentUser.id}_${Date.now()}.${imageFile.name.split('.').pop()}`;
+          const { error: storageErr } = await supabaseClient
+            .storage
+            .from('roupas')
+            .upload(fileName, imageFile);
+
+          if (!storageErr) {
+            const { data: urlData } = supabaseClient.storage.from('roupas').getPublicUrl(fileName);
+            if (urlData) publicImageUrl = urlData.publicUrl;
+          }
+        } catch (err) {
+          console.warn('Erro ao subir foto wishlist:', err);
+        }
+      }
+
+      const { error } = await supabaseClient
+        .from('wishlist')
+        .insert({
+          user_id: currentUser.id,
+          nome,
+          categoria: categoria || null,
+          preco_estimado: preco,
+          link_compra: link || null,
+          observacoes: obs || null,
+          imagem_url: publicImageUrl,
+          status: 'Desejado'
+        });
+
+      btnSubmitWishlist.disabled = false;
+      btnSubmitWishlist.querySelector('span').textContent = t('btn_save_wishlist');
+
+      if (error) {
+        showWishlistModalMessage(translateSupabaseError(error));
+      } else {
+        showWishlistModalMessage(t('wishlist_add_success'), 'success');
+        setTimeout(() => {
+          closeAddWishlistModal();
+          loadWishlistItems();
+        }, 1000);
+      }
+    });
+  }
+
+  // Carregar e Renderizar Itens da Wishlist
+  const loadWishlistItems = async () => {
+    if (!supabaseClient || !currentUser || !wishlistGrid) return;
+
+    wishlistGrid.innerHTML = '<p style="text-align: center; color: var(--text-muted); grid-column: 1 / -1;">Carregando wishlist...</p>';
+
+    try {
+      const { data: wishlist, error } = await supabaseClient
+        .from('wishlist')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao carregar wishlist:', error);
+        wishlistGrid.innerHTML = `<p style="text-align: center; color: var(--error-text); grid-column: 1 / -1;">${translateSupabaseError(error)}</p>`;
+        return;
+      }
+
+      if (!wishlist || wishlist.length === 0) {
+        wishlistGrid.innerHTML = `
+          <div class="empty-wardrobe-card" style="grid-column: 1 / -1;">
+            <i data-lucide="shopping-bag" class="empty-wardrobe-icon"></i>
+            <h4 class="card-title" data-i18n="empty_wishlist_title">${t('empty_wishlist_title')}</h4>
+            <p class="card-desc" data-i18n="empty_wishlist_desc">${t('empty_wishlist_desc')}</p>
+            <button class="btn btn-primary" data-action="open-add-wishlist" style="margin-top: 16px;">
+              <i data-lucide="plus" class="icon"></i>
+              <span data-i18n="btn_add_wishlist_item">${t('btn_add_wishlist_item')}</span>
+            </button>
+          </div>
+        `;
+        refreshIcons();
+        return;
+      }
+
+      wishlistGrid.innerHTML = '';
+
+      wishlist.forEach(item => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'card wishlist-card';
+
+        const imgHtml = item.imagem_url
+          ? `<img src="${item.imagem_url}" alt="${item.nome}" class="piece-image" loading="lazy">`
+          : `
+            <div class="piece-image-placeholder">
+              <i data-lucide="shopping-bag" class="icon"></i>
+              <span>${t('no_image')}</span>
+            </div>
+          `;
+
+        const isAcquired = item.status === 'Adquirido';
+
+        cardEl.innerHTML = `
+          <div class="piece-image-wrapper">
+            ${imgHtml}
+          </div>
+          <div class="piece-info">
+            <div class="wishlist-card-header">
+              <h5 class="piece-title">${item.nome}</h5>
+              <span class="status-pill ${isAcquired ? 'acquired' : 'desired'}">${isAcquired ? t('wishlist_status_acquired') : t('wishlist_status_desired')}</span>
+            </div>
+            <div class="piece-details">
+              ${item.categoria ? `<span class="piece-tag">${getCategoryTranslation(item.categoria)}</span>` : ''}
+              ${item.preco_estimado ? `<span class="piece-tag">$ ${parseFloat(item.preco_estimado).toFixed(2)}</span>` : ''}
+            </div>
+            ${item.observacoes ? `<p class="wishlist-notes">${item.observacoes}</p>` : ''}
+            <div class="wishlist-actions">
+              ${item.link_compra ? `<a href="${item.link_compra}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm"><i data-lucide="external-link" class="icon-sm"></i> Store</a>` : ''}
+              ${!isAcquired ? `
+                <button class="btn btn-secondary btn-sm btn-mark-acquired" data-id="${item.id}">
+                  <i data-lucide="check" class="icon-sm"></i> ${t('btn_mark_acquired')}
+                </button>
+              ` : ''}
+              <button class="btn btn-primary btn-sm btn-convert-wardrobe" data-id="${item.id}">
+                <i data-lucide="arrow-right" class="icon-sm"></i> ${t('btn_convert_to_wardrobe')}
+              </button>
+              <button class="btn-icon btn-delete-wishlist" data-id="${item.id}">
+                <i data-lucide="trash-2" class="icon"></i>
+              </button>
+            </div>
+          </div>
+        `;
+
+        const btnMark = cardEl.querySelector('.btn-mark-acquired');
+        if (btnMark) {
+          btnMark.addEventListener('click', async () => {
+            await supabaseClient.from('wishlist').update({ status: 'Adquirido' }).eq('id', item.id);
+            loadWishlistItems();
+          });
+        }
+
+        const btnConvert = cardEl.querySelector('.btn-convert-wardrobe');
+        if (btnConvert) {
+          btnConvert.addEventListener('click', async () => {
+            if (confirm(t('confirm_convert_wishlist', { name: item.nome }))) {
+              // 1. Insert as active piece in wardrobe
+              await supabaseClient.from('roupas').insert({
+                user_id: currentUser.id,
+                nome: item.nome,
+                categoria: item.categoria || 'Outros',
+                imagem_url: item.imagem_url,
+                status: 'Ativo'
+              });
+
+              // 2. Update status in wishlist
+              await supabaseClient.from('wishlist').update({ status: 'Adquirido' }).eq('id', item.id);
+
+              alert(t('wishlist_converted_success'));
+              loadWishlistItems();
+            }
+          });
+        }
+
+        const btnDel = cardEl.querySelector('.btn-delete-wishlist');
+        if (btnDel) {
+          btnDel.addEventListener('click', async () => {
+            await supabaseClient.from('wishlist').delete().eq('id', item.id);
+            loadWishlistItems();
+          });
+        }
+
+        wishlistGrid.appendChild(cardEl);
+      });
+
+      refreshIcons();
+    } catch (err) {
+      console.error('Erro ao carregar wishlist:', err);
+    }
+  };
+
   // ============================================================================
-  // --- Módulo Módulo Board View (Combinações & Canvas Editor) ---
+  // --- Módulo Board View (Combinações & Canvas Editor) ---
   // ============================================================================
 
   const boardCanvas = document.getElementById('board-canvas');
@@ -1657,17 +2121,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnClearBoard = document.getElementById('btn-clear-board');
   const savedCombinationsList = document.getElementById('saved-combinations-list');
 
-  let canvasItems = []; // Array de itens ativos no canvas
+  let canvasItems = [];
   let selectedItemId = null;
   let nextZIndex = 1;
 
-  // Carregar Módulo Board View
   const initBoardView = async () => {
     await loadBoardPaletteItems();
     await loadSavedCombinations();
   };
 
-  // Carregar Peças na Barra Lateral (Palette)
   const loadBoardPaletteItems = async () => {
     if (!supabaseClient || !currentUser || !boardItemsPalette) return;
 
@@ -1708,7 +2170,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // Atualizar visibilidade do Placeholder
   const updatePlaceholderVisibility = () => {
     if (!boardCanvasPlaceholder) return;
     if (canvasItems.length === 0) {
@@ -1718,11 +2179,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // Renderizar e re-sincronizar o Canvas
   const renderCanvas = () => {
     if (!boardCanvas) return;
 
-    // Limpa elementos existentes mantendo o placeholder
     const existingElements = boardCanvas.querySelectorAll('.canvas-item');
     existingElements.forEach(el => el.remove());
 
@@ -1756,7 +2215,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="canvas-resize-handle"></div>
       `;
 
-      // Seleção, Arraste, Redimensionamento e Rotação
       makeCanvasItemInteractive(itemEl, item);
 
       boardCanvas.appendChild(itemEl);
@@ -1765,9 +2223,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     refreshIcons();
   };
 
-  // Tornar Elemento do Canvas Arrastável, Redimensionável e Selecionável
   const makeCanvasItemInteractive = (itemEl, item) => {
-    // Seleção ao clicar
     itemEl.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       if (selectedItemId !== item.id) {
@@ -1784,7 +2240,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }, { passive: true });
 
-    // Botões de Controles de Camada, Rotação e Deleção
     const btnRotateLeft = itemEl.querySelector('.btn-rotate-left');
     const btnRotateRight = itemEl.querySelector('.btn-rotate-right');
     const btnLayerUp = itemEl.querySelector('.btn-layer-up');
@@ -1837,7 +2292,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
-    // Lógica de Rotação Livre (Rotate Handle)
     let isRotating = false;
 
     if (rotateHandle) {
@@ -1865,7 +2319,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const radians = Math.atan2(clientY - centerY, clientX - centerX);
         let degrees = Math.round(radians * (180 / Math.PI));
 
-        // Ajuste de offset da alça
         degrees = (degrees + 45 + 360) % 360;
         item.rotation = degrees;
         itemEl.style.transform = `rotate(${item.rotation}deg)`;
@@ -1884,7 +2337,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       rotateHandle.addEventListener('touchstart', startRotate, { passive: true });
     }
 
-    // Lógica de Drag & Drop (Arraste)
     let isDragging = false;
     let startX = 0;
     let startY = 0;
@@ -1937,7 +2389,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     itemEl.addEventListener('mousedown', startDrag);
     itemEl.addEventListener('touchstart', startDrag, { passive: true });
 
-    // Lógica de Redimensionamento (Resize)
     let isResizing = false;
     let startW = 0;
     let startH = 0;
@@ -1991,7 +2442,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // Adicionar Peça ao Canvas
   const addItemToCanvas = (piece) => {
     const newItem = {
       id: `item_${Date.now()}_${Math.random().toString(36).substring(2,6)}`,
@@ -2011,7 +2461,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderCanvas();
   };
 
-  // Desselecionar ao clicar no fundo do canvas
   if (boardCanvas) {
     boardCanvas.addEventListener('click', (e) => {
       if (e.target === boardCanvas || e.target === boardCanvasPlaceholder) {
@@ -2021,7 +2470,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Limpar Canvas
   if (btnClearBoard) {
     btnClearBoard.addEventListener('click', () => {
       canvasItems = [];
@@ -2031,7 +2479,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Helper para renderizar canvas centralizado, escalado e alinhado de combinação
   const renderCombinationToCanvas = async (items, targetWidth = 800, targetHeight = 600, options = {}) => {
     const canvas = document.createElement('canvas');
     canvas.width = targetWidth;
@@ -2048,7 +2495,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       return canvas;
     }
 
-    // Calcula a caixa delimitadora (bounding box) de todos os itens considerando a rotação
     let minX = Infinity;
     let maxX = -Infinity;
     let minY = Infinity;
@@ -2100,10 +2546,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const targetCX = targetWidth / 2;
     const targetCY = targetHeight / 2;
 
-    // Ordena os itens por zIndex
     const sortedItems = [...items].sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
 
-    // Pré-carrega as imagens dos itens
     const loadedImages = await Promise.all(
       sortedItems.map(item => new Promise(resolve => {
         if (!item.image_url) return resolve({ item, img: null });
@@ -2147,7 +2591,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return canvas;
   };
 
-  // Exportar combinação em PNG
   const exportCombinationPNG = async (items, name = 'combinacao') => {
     if (!items || items.length === 0) {
       alert(t('combination_empty_error'));
@@ -2179,7 +2622,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // Botão de Exportar PNG no Toolbar
   const btnExportBoard = document.getElementById('btn-export-board');
   if (btnExportBoard) {
     btnExportBoard.addEventListener('click', () => {
@@ -2188,7 +2630,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Salvar Combinação
   if (btnSaveBoard) {
     btnSaveBoard.addEventListener('click', async () => {
       const outfitName = boardOutfitNameInput ? boardOutfitNameInput.value.trim() : '';
@@ -2242,7 +2683,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Carregar e Renderizar Combinações Salvas com Ícone de Estrela (⭐) para Favorito
   const loadSavedCombinations = async () => {
     if (!supabaseClient || !currentUser || !savedCombinationsList) return;
 
@@ -2298,7 +2738,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
         `;
 
-        // Renderiza prévia centralizada e escalada via Canvas
         renderCombinationToCanvas(comb.canvas_state, 300, 160, { backgroundColor: '#f8f9fa' })
           .then(thumbCanvas => {
             const previewBox = cardEl.querySelector('.combination-preview-box');
@@ -2312,7 +2751,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           })
           .catch(err => console.error('Erro ao gerar preview da combinação:', err));
 
-        // Event Listener para Favoritar (Togglamento de is_favorite na tabela public.combinacoes)
         const starBtn = cardEl.querySelector('.btn-star-favorite');
         if (starBtn) {
           starBtn.addEventListener('click', async (e) => {
@@ -2320,7 +2758,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const currentFav = starBtn.getAttribute('data-fav') === 'true';
             const newFav = !currentFav;
 
-            // Atualização Otimista da Interface
             starBtn.setAttribute('data-fav', newFav.toString());
             if (newFav) {
               starBtn.classList.add('is-favorite');
@@ -2335,7 +2772,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (updateErr) {
               console.error('Erro ao atualizar favorito:', updateErr);
-              // Reverte interface se falhou
               starBtn.setAttribute('data-fav', currentFav.toString());
               if (currentFav) {
                 starBtn.classList.add('is-favorite');
@@ -2346,7 +2782,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           });
         }
 
-        // Event Listener para Exportar Combinação em PNG
         const btnExportComb = cardEl.querySelector('.btn-export-combination');
         if (btnExportComb) {
           btnExportComb.addEventListener('click', () => {
@@ -2354,7 +2789,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           });
         }
 
-        // Event Listener para Carregar no Canvas
         const btnLoadComb = cardEl.querySelector('.btn-load-combination');
         if (btnLoadComb) {
           btnLoadComb.addEventListener('click', () => {
@@ -2368,7 +2802,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           });
         }
 
-        // Event Listener para Excluir Combinação
         const btnDeleteComb = cardEl.querySelector('.btn-delete-combination');
         if (btnDeleteComb) {
           btnDeleteComb.addEventListener('click', async () => {
