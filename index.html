@@ -203,8 +203,20 @@
             <div class="board-sidebar">
               <h4 class="board-sidebar-title" data-i18n="board_add_items_title">Minhas Peças</h4>
               <p class="board-sidebar-subtitle" data-i18n="board_add_items_desc">Clique numa peça para adicioná-la ao canvas.</p>
+
+              <div class="board-palette-tabs">
+                <button id="palette-tab-wardrobe" class="palette-tab-btn active" data-palette="wardrobe" type="button">
+                  <i data-lucide="shirt" class="icon-sm"></i>
+                  <span data-i18n="tab_wardrobe_pieces">Guarda-Roupa</span>
+                </button>
+                <button id="palette-tab-wishlist" class="palette-tab-btn" data-palette="wishlist" type="button">
+                  <i data-lucide="shopping-bag" class="icon-sm"></i>
+                  <span data-i18n="tab_wishlist_pieces">Wishlist</span>
+                </button>
+              </div>
+
               <div id="board-items-palette" class="board-items-palette">
-                <!-- Peças do usuário renderizadas aqui -->
+                <!-- Peças do usuário ou wishlist renderizadas aqui -->
               </div>
             </div>
 
@@ -273,10 +285,16 @@
               <h3 data-i18n="wishlist_title">Lista de Desejos (Wishlist)</h3>
               <p class="flow-subtitle" data-i18n="wishlist_subtitle">Planeje suas próximas aquisições e acompanhe itens desejados.</p>
             </div>
-            <button class="btn btn-primary" id="btn-open-add-wishlist-modal" data-action="open-add-wishlist">
-              <i data-lucide="plus" class="icon"></i>
-              <span data-i18n="btn_add_wishlist_item">Adicionar Item</span>
-            </button>
+            <div class="flow-header-actions" style="display: flex; gap: 8px;">
+              <button class="btn btn-secondary" id="btn-compare-wishlist-board">
+                <i data-lucide="sparkles" class="icon"></i>
+                <span data-i18n="btn_compare_on_board">Comparar no Canvas</span>
+              </button>
+              <button class="btn btn-primary" id="btn-open-add-wishlist-modal" data-action="open-add-wishlist">
+                <i data-lucide="plus" class="icon"></i>
+                <span data-i18n="btn_add_wishlist_item">Adicionar Item</span>
+              </button>
+            </div>
           </div>
 
           <div id="wishlist-grid" class="wishlist-grid">
@@ -763,6 +781,29 @@
     </div>
   </div>
 
+  <!-- Modal para Visualizar / Inspecionar Coleção -->
+  <div id="modal-view-collection" class="modal-overlay" style="display: none;">
+    <div class="modal-card modal-card-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" id="view-collection-title">Visualizar Coleção</h3>
+        <button id="btn-close-view-collection-modal" class="btn-icon" type="button">
+          <i data-lucide="x" class="icon"></i>
+        </button>
+      </div>
+      <p class="modal-desc" id="view-collection-desc">Combinações pertencentes a esta coleção.</p>
+
+      <div id="view-collection-outfits-grid" class="view-collection-outfits-grid modal-form-body">
+        <!-- Outfits da coleção com preview e detalhes -->
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="btn-close-view-collection">
+          <span data-i18n="btn_back">Voltar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal para Adicionar/Editar Item na Wishlist -->
   <div id="modal-add-wishlist" class="modal-overlay" style="display: none;">
     <div class="modal-card">
@@ -786,6 +827,32 @@
           </label>
           <div id="wishlist-image-preview-container" class="image-preview-container" style="display: none;">
             <img id="wishlist-image-preview" src="" alt="Prévia Wishlist" class="piece-image-preview">
+
+            <!-- Barra de Progresso de Remoção de Fundo (IA) -->
+            <div id="wishlist-bg-remove-progress-container" class="bg-remove-progress-container" style="display: none;">
+              <div class="bg-remove-progress-info">
+                <span id="wishlist-bg-remove-progress-status" class="bg-remove-progress-status" data-i18n="bg_removing_progress">Removendo fundo da imagem...</span>
+                <span id="wishlist-bg-remove-progress-percent" class="bg-remove-progress-percent">0%</span>
+              </div>
+              <div class="bg-remove-progress-track">
+                <div id="wishlist-bg-remove-progress-fill" class="bg-remove-progress-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <div id="wishlist-image-processing-actions" class="image-processing-actions">
+              <button type="button" id="btn-wishlist-remove-bg" class="btn btn-secondary btn-sm" title="Remover Fundo da Imagem">
+                <i data-lucide="wand-2" class="icon"></i>
+                <span data-i18n="btn_remove_bg">Remover Fundo</span>
+              </button>
+              <button type="button" id="btn-wishlist-invert-selection" class="btn btn-secondary btn-sm" title="Inverter Seleção">
+                <i data-lucide="flip-horizontal-2" class="icon"></i>
+                <span data-i18n="btn_invert_selection">Inverter Seleção</span>
+              </button>
+              <button type="button" id="btn-wishlist-undo-original" class="btn btn-secondary btn-sm" title="Desfazer / Foto Original">
+                <i data-lucide="rotate-ccw" class="icon"></i>
+                <span data-i18n="btn_undo_original">Foto Original</span>
+              </button>
+            </div>
           </div>
         </div>
 
