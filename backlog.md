@@ -50,4 +50,5 @@
 - **2025-05-18:** Projeto iniciado, `backlog.md` criado e arquitetura sequencial mapeada.
 - **2025-05-18:** Implementado fluxo completo de autenticação (Login/Cadastro com Supabase Auth), navegação para o guarda-roupa, saudação personalizada e Painel de Administrador com métricas agregadas.
 - **2025-05-18:** Atualizada a lógica de Admin para checar estritamente `user.user_metadata?.role === 'admin'`. Criado o script `schema.sql` idempotente com a tabela `roupas`, `DROP POLICY IF EXISTS` e políticas de RLS ajustadas.
-- **2025-05-18:** Implementado Módulo de Cadastro e Upload de Roupas com captura nativa `<input capture="environment">`, envio ao Supabase Storage bucket `roupas`, cadastro de atributos na tabela `public.roupas`, e exibição agrupada por Categoria com contadores no cabeçalho.
+- **2025-05-18:** Implementado Módulo de Cadastro e Upload de Roupas com envio ao Supabase Storage bucket `roupas`, cadastro de atributos na tabela `public.roupas`, e exibição agrupada por Categoria com contadores no cabeçalho.
+- **2025-05-18:** Garantido suporte sem restrições nos inputs de upload de imagem para permitir tanto a captura por câmera quanto a seleção pela galeria do dispositivo mobile via `accept="image/*"` sem atributo `capture`.
