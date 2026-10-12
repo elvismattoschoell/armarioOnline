@@ -1373,6 +1373,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     closeCanvasEditor();
     processedBlob = null;
     originalImageSrc = null;
+    if (pieceImageInput) pieceImageInput.removeAttribute('capture');
     if (addPieceForm) addPieceForm.reset();
     if (pieceImagePreview) pieceImagePreview.src = '';
     if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
@@ -2331,6 +2332,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     wishlistProcessedBlob = null;
     wishlistOriginalImageSrc = null;
     hideWishlistBgProgress();
+    if (wishlistImageInput) wishlistImageInput.removeAttribute('capture');
     if (addWishlistForm) addWishlistForm.reset();
     if (wishlistImagePreview) wishlistImagePreview.src = '';
     if (wishlistImagePreviewContainer) wishlistImagePreviewContainer.style.display = 'none';
