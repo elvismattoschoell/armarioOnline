@@ -112,6 +112,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnSaveCollectionOutfits = document.getElementById('btn-save-collection-outfits');
   const manageCollectionTitle = document.getElementById('manage-collection-title');
 
+  // Modal de Visualizar Coleção
+  const modalViewCollection = document.getElementById('modal-view-collection');
+  const btnCloseViewCollectionModal = document.getElementById('btn-close-view-collection-modal');
+  const btnCloseViewCollection = document.getElementById('btn-close-view-collection');
+  const viewCollectionTitle = document.getElementById('view-collection-title');
+  const viewCollectionDesc = document.getElementById('view-collection-desc');
+  const viewCollectionOutfitsGrid = document.getElementById('view-collection-outfits-grid');
+
   // Elementos de Wishlist
   const wishlistGrid = document.getElementById('wishlist-grid');
   const modalAddWishlist = document.getElementById('modal-add-wishlist');
@@ -488,7 +496,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // Render Bar Chart: Items by Category
+  // Render Sleek Donut Chart: Items by Category
   const renderAdminCategoryChart = (items) => {
     if (!adminCategoryChart) return;
 
@@ -498,65 +506,157 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const catCounts = {};
+    let totalCount = 0;
     items.forEach(item => {
       const cat = getCategoryTranslation(item.categoria || 'Outros');
       catCounts[cat] = (catCounts[cat] || 0) + 1;
+      totalCount += 1;
     });
 
     const entries = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
-    const maxVal = Math.max(...entries.map(e => e[1]), 1);
+    const colorPalette = ['#0f172a', '#334155', '#475569', '#64748b', '#94a3b8', '#cbd5e1', '#e2e8f0'];
 
-    let html = `<div class="bar-chart-list">`;
-    entries.forEach(([cat, count]) => {
-      const pct = Math.round((count / maxVal) * 100);
-      html += `
-        <div class="bar-chart-item">
-          <div class="bar-chart-label-group">
-            <span class="bar-chart-label">${cat}</span>
-            <span class="bar-chart-value">${count}</span>
-          </div>
-          <div class="bar-chart-track">
-            <div class="bar-chart-fill" style="width: ${pct}%;"></div>
-          </div>
+    // Donut SVG Calculations
+    const radius = 60;
+    const strokeWidth = 20;
+    const circumference = 2 * Math.PI * radius;
+    let accumulatedAngle = 0;
+
+    let svgSlicesHtml = '';
+    let legendHtml = '<div class="chart-legend-grid">';
+
+    entries.forEach(([cat, count], index) => {
+      const color = colorPalette[index % colorPalette.length];
+      const percentage = totalCount > 0 ? (count / totalCount) : 0;
+      const strokeDasharray = `${percentage * circumference} ${circumference}`;
+      const strokeDashoffset = -accumulatedAngle * circumference;
+
+      accumulatedAngle += percentage;
+
+      svgSlicesHtml += `
+        <circle cx="100" cy="100" r="${radius}"
+                fill="none"
+                stroke="${color}"
+                stroke-width="${strokeWidth}"
+                stroke-dasharray="${strokeDasharray}"
+                stroke-dashoffset="${strokeDashoffset}"
+                class="donut-slice"
+                data-tooltip="${cat}: ${count} (${Math.round(percentage * 100)}%)">
+          <title>${cat}: ${count} (${Math.round(percentage * 100)}%)</title>
+        </circle>
+      `;
+
+      legendHtml += `
+        <div class="chart-legend-item">
+          <span class="legend-color-dot" style="background-color: ${color};"></span>
+          <span class="legend-label">${cat}</span>
+          <span class="legend-value">${count} <small>(${Math.round(percentage * 100)}%)</small></span>
         </div>
       `;
     });
-    html += `</div>`;
 
-    adminCategoryChart.innerHTML = html;
+    legendHtml += '</div>';
+
+    const donutSvg = `
+      <div class="donut-chart-wrapper">
+        <div class="donut-svg-container">
+          <svg viewBox="0 0 200 200" class="donut-svg">
+            <circle cx="100" cy="100" r="${radius}" fill="none" stroke="#f1f5f9" stroke-width="${strokeWidth}" />
+            ${svgSlicesHtml}
+          </svg>
+          <div class="donut-center-text">
+            <span class="donut-total-value">${totalCount}</span>
+            <span class="donut-total-label">${t('metric_items_label')}</span>
+          </div>
+        </div>
+        ${legendHtml}
+      </div>
+    `;
+
+    adminCategoryChart.innerHTML = donutSvg;
   };
 
-  // Render Overview Chart: System Proportions
+  // Render Modern SVG Line/Area Chart: System Overview & Activity
   const renderAdminOverviewChart = (users, items, combinations, wishlist) => {
     if (!adminOverviewChart) return;
 
     const metrics = [
-      { label: t('metric_users_label'), count: users, icon: 'users' },
-      { label: t('metric_items_label'), count: items, icon: 'shirt' },
-      { label: t('metric_combinations_label'), count: combinations, icon: 'sparkles' },
-      { label: t('metric_wishlist_label'), count: wishlist, icon: 'shopping-bag' }
+      { label: t('metric_users_label'), count: users, shortLabel: 'Usuários' },
+      { label: t('metric_items_label'), count: items, shortLabel: 'Peças' },
+      { label: t('metric_combinations_label'), count: combinations, shortLabel: 'Outfits' },
+      { label: t('metric_wishlist_label'), count: wishlist, shortLabel: 'Wishlist' }
     ];
 
-    const maxVal = Math.max(...metrics.map(m => m.count), 1);
+    const maxVal = Math.max(...metrics.map(m => m.count), 10);
+    const chartWidth = 320;
+    const chartHeight = 160;
+    const paddingX = 40;
+    const paddingY = 25;
+    const plotWidth = chartWidth - paddingX * 2;
+    const plotHeight = chartHeight - paddingY * 2;
 
-    let html = `<div class="bar-chart-list">`;
-    metrics.forEach(m => {
-      const pct = Math.round((m.count / maxVal) * 100);
-      html += `
-        <div class="bar-chart-item">
-          <div class="bar-chart-label-group">
-            <span class="bar-chart-label">${m.label}</span>
-            <span class="bar-chart-value">${m.count}</span>
-          </div>
-          <div class="bar-chart-track">
-            <div class="bar-chart-fill" style="width: ${pct}%;"></div>
-          </div>
-        </div>
+    const points = metrics.map((m, idx) => {
+      const x = paddingX + (idx / (metrics.length - 1)) * plotWidth;
+      const y = paddingY + plotHeight - (m.count / maxVal) * plotHeight;
+      return { x, y, count: m.count, label: m.shortLabel, fullLabel: m.label };
+    });
+
+    // Build SVG Path
+    let pathD = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const current = points[i];
+      const next = points[i + 1];
+      const controlX1 = current.x + (next.x - current.x) / 2;
+      const controlY1 = current.y;
+      const controlX2 = current.x + (next.x - current.x) / 2;
+      const controlY2 = next.y;
+      pathD += ` C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${next.x} ${next.y}`;
+    }
+
+    const areaD = `${pathD} L ${points[points.length - 1].x} ${chartHeight - paddingY + 10} L ${points[0].x} ${chartHeight - paddingY + 10} Z`;
+
+    let gridLinesHtml = '';
+    const gridSteps = 3;
+    for (let i = 0; i <= gridSteps; i++) {
+      const gridY = paddingY + (i / gridSteps) * plotHeight;
+      const val = Math.round(maxVal - (i / gridSteps) * maxVal);
+      gridLinesHtml += `
+        <line x1="${paddingX - 5}" y1="${gridY}" x2="${chartWidth - paddingX + 5}" y2="${gridY}" stroke="#e2e8f0" stroke-dasharray="2 2" stroke-width="1" />
+        <text x="${paddingX - 10}" y="${gridY + 3}" text-anchor="end" font-size="9" fill="#94a3b8" font-family="inherit">${val}</text>
+      `;
+    }
+
+    let pointsHtml = '';
+    points.forEach(p => {
+      pointsHtml += `
+        <g class="chart-node-group">
+          <circle cx="${p.x}" cy="${p.y}" r="5" fill="#0f172a" stroke="#ffffff" stroke-width="2" class="chart-point">
+            <title>${p.fullLabel}: ${p.count}</title>
+          </circle>
+          <text x="${p.x}" y="${p.y - 10}" text-anchor="middle" font-size="10" font-weight="700" fill="#0f172a">${p.count}</text>
+          <text x="${p.x}" y="${chartHeight - 4}" text-anchor="middle" font-size="9" font-weight="600" fill="#64748b">${p.label}</text>
+        </g>
       `;
     });
-    html += `</div>`;
 
-    adminOverviewChart.innerHTML = html;
+    const svgHtml = `
+      <div class="line-chart-wrapper">
+        <svg viewBox="0 0 ${chartWidth} ${chartHeight}" class="line-chart-svg">
+          <defs>
+            <linearGradient id="lineChartGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0f172a" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#0f172a" stop-opacity="0.0"/>
+            </linearGradient>
+          </defs>
+          ${gridLinesHtml}
+          <path d="${areaD}" fill="url(#lineChartGradient)" />
+          <path d="${pathD}" fill="none" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+          ${pointsHtml}
+        </svg>
+      </div>
+    `;
+
+    adminOverviewChart.innerHTML = svgHtml;
   };
 
   // --- Handlers do Supabase Auth ---
@@ -612,6 +712,110 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   }
+
+  // Modal de Visualização da Coleção (Inspect Outfits)
+  const openViewCollectionModal = async (collectionId, collectionName, collectionDesc) => {
+    if (viewCollectionTitle) viewCollectionTitle.textContent = t('modal_view_collection_title', { name: collectionName });
+    if (viewCollectionDesc) viewCollectionDesc.textContent = collectionDesc || t('modal_view_collection_desc');
+    if (viewCollectionOutfitsGrid) viewCollectionOutfitsGrid.innerHTML = 'Carregando outfits...';
+
+    if (modalViewCollection) modalViewCollection.style.display = 'flex';
+
+    try {
+      const { data: junctions, error: juncErr } = await supabaseClient
+        .from('colecao_combinacoes')
+        .select('combinacao_id, combinacoes(*)')
+        .eq('colecao_id', collectionId);
+
+      if (juncErr) {
+        console.error('Erro ao buscar outfits da coleção:', juncErr);
+        if (viewCollectionOutfitsGrid) viewCollectionOutfitsGrid.innerHTML = `<p style="color: var(--error-text); text-align: center;">${translateSupabaseError(juncErr)}</p>`;
+        return;
+      }
+
+      const outfits = (junctions || [])
+        .map(j => j.combinacoes)
+        .filter(Boolean);
+
+      if (!outfits || outfits.length === 0) {
+        if (viewCollectionOutfitsGrid) {
+          viewCollectionOutfitsGrid.innerHTML = `<p style="color: var(--text-muted); text-align: center; padding: 24px;">${t('empty_collection_outfits')}</p>`;
+        }
+        return;
+      }
+
+      if (viewCollectionOutfitsGrid) viewCollectionOutfitsGrid.innerHTML = '';
+
+      outfits.forEach(comb => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'combination-card';
+
+        cardEl.innerHTML = `
+          <div class="combination-card-header">
+            <h5 class="combination-title">${comb.nome}</h5>
+            <span class="piece-tag">${Array.isArray(comb.canvas_state) ? comb.canvas_state.length : 0} peças</span>
+          </div>
+          <div class="combination-preview-box"></div>
+          <div class="combination-card-actions">
+            <button class="btn btn-primary btn-sm btn-load-to-board" data-id="${comb.id}">
+              <i data-lucide="sparkles" class="icon-sm"></i>
+              <span>Abrir no Canvas</span>
+            </button>
+            <button class="btn btn-secondary btn-sm btn-export-combination" data-id="${comb.id}" title="Exportar PNG">
+              <i data-lucide="download" class="icon-sm"></i>
+            </button>
+          </div>
+        `;
+
+        renderCombinationToCanvas(comb.canvas_state, 320, 180, { backgroundColor: '#f8f9fa' })
+          .then(thumbCanvas => {
+            const previewBox = cardEl.querySelector('.combination-preview-box');
+            if (previewBox) {
+              previewBox.innerHTML = '';
+              thumbCanvas.style.width = '100%';
+              thumbCanvas.style.height = '100%';
+              thumbCanvas.style.objectFit = 'contain';
+              previewBox.appendChild(thumbCanvas);
+            }
+          })
+          .catch(err => console.error('Erro ao gerar preview do outfit da coleção:', err));
+
+        const btnLoad = cardEl.querySelector('.btn-load-to-board');
+        if (btnLoad) {
+          btnLoad.addEventListener('click', () => {
+            if (Array.isArray(comb.canvas_state)) {
+              canvasItems = JSON.parse(JSON.stringify(comb.canvas_state));
+              selectedItemId = null;
+              if (boardOutfitNameInput) boardOutfitNameInput.value = comb.nome;
+              closeViewCollectionModal();
+              showSection('board');
+              renderCanvas();
+            }
+          });
+        }
+
+        const btnExport = cardEl.querySelector('.btn-export-combination');
+        if (btnExport) {
+          btnExport.addEventListener('click', () => {
+            exportCombinationPNG(comb.canvas_state, comb.nome);
+          });
+        }
+
+        viewCollectionOutfitsGrid.appendChild(cardEl);
+      });
+
+      refreshIcons();
+    } catch (err) {
+      console.error('Erro ao abrir modal de visualização de coleção:', err);
+    }
+  };
+
+  const closeViewCollectionModal = () => {
+    if (modalViewCollection) modalViewCollection.style.display = 'none';
+  };
+
+  if (btnCloseViewCollectionModal) btnCloseViewCollectionModal.addEventListener('click', closeViewCollectionModal);
+  if (btnCloseViewCollection) btnCloseViewCollection.addEventListener('click', closeViewCollectionModal);
 
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
@@ -1743,10 +1947,16 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="collection-badge-group">
             <span class="piece-tag">${t('collection_outfits_count', { count: outfitCount })}</span>
           </div>
-          <button class="btn btn-secondary btn-manage-collection" data-id="${col.id}" data-name="${col.nome}">
-            <i data-lucide="sparkles" class="icon"></i>
-            <span>${t('btn_add_combinations_to_collection')}</span>
-          </button>
+          <div class="collection-actions-row">
+            <button class="btn btn-primary btn-sm btn-view-collection" data-id="${col.id}" data-name="${col.nome}">
+              <i data-lucide="eye" class="icon-sm"></i>
+              <span>${t('btn_view_collection')}</span>
+            </button>
+            <button class="btn btn-secondary btn-sm btn-manage-collection" data-id="${col.id}" data-name="${col.nome}">
+              <i data-lucide="settings-2" class="icon-sm"></i>
+              <span>${t('btn_add_combinations_to_collection')}</span>
+            </button>
+          </div>
         `;
 
         const btnDelete = cardEl.querySelector('.btn-delete-collection');
@@ -1764,6 +1974,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 loadCollections();
               }
             }
+          });
+        }
+
+        const btnView = cardEl.querySelector('.btn-view-collection');
+        if (btnView) {
+          btnView.addEventListener('click', () => {
+            openViewCollectionModal(col.id, col.nome, col.descricao);
           });
         }
 
@@ -1816,11 +2033,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         const itemEl = document.createElement('label');
         itemEl.className = 'collection-outfit-checkbox-item';
         const isChecked = attachedIds.has(comb.id);
+        const itemCount = Array.isArray(comb.canvas_state) ? comb.canvas_state.length : 0;
 
         itemEl.innerHTML = `
           <input type="checkbox" value="${comb.id}" ${isChecked ? 'checked' : ''}>
-          <span>${comb.nome}</span>
+          <div class="outfit-checkbox-preview"></div>
+          <div class="outfit-checkbox-info">
+            <span class="outfit-checkbox-name">${comb.nome}</span>
+            <span class="piece-tag">${itemCount} peças</span>
+          </div>
         `;
+
+        renderCombinationToCanvas(comb.canvas_state, 120, 80, { backgroundColor: '#f8f9fa' })
+          .then(thumbCanvas => {
+            const previewContainer = itemEl.querySelector('.outfit-checkbox-preview');
+            if (previewContainer) {
+              thumbCanvas.style.width = '100%';
+              thumbCanvas.style.height = '100%';
+              thumbCanvas.style.objectFit = 'contain';
+              previewContainer.appendChild(thumbCanvas);
+            }
+          })
+          .catch(err => console.error('Erro no preview do checkbox da coleção:', err));
+
         collectionOutfitsSelectorList.appendChild(itemEl);
       });
     } catch (err) {
@@ -1874,8 +2109,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // --- Wishlist Feature ---
+  // Wishlist Background Removal Elements
+  const btnWishlistRemoveBg = document.getElementById('btn-wishlist-remove-bg');
+  const btnWishlistInvertSelection = document.getElementById('btn-wishlist-invert-selection');
+  const btnWishlistUndoOriginal = document.getElementById('btn-wishlist-undo-original');
+  const wishlistBgRemoveProgressContainer = document.getElementById('wishlist-bg-remove-progress-container');
+  const wishlistBgRemoveProgressStatus = document.getElementById('wishlist-bg-remove-progress-status');
+  const wishlistBgRemoveProgressPercent = document.getElementById('wishlist-bg-remove-progress-percent');
+  const wishlistBgRemoveProgressFill = document.getElementById('wishlist-bg-remove-progress-fill');
+
+  let wishlistOriginalImageSrc = null;
+  let wishlistProcessedBlob = null;
+
+  const updateWishlistBgProgress = (percent, statusText) => {
+    if (wishlistBgRemoveProgressContainer) wishlistBgRemoveProgressContainer.style.display = 'flex';
+    const rounded = Math.min(100, Math.max(0, Math.round(percent)));
+    if (wishlistBgRemoveProgressPercent) wishlistBgRemoveProgressPercent.textContent = `${rounded}%`;
+    if (wishlistBgRemoveProgressFill) wishlistBgRemoveProgressFill.style.width = `${rounded}%`;
+    if (statusText && wishlistBgRemoveProgressStatus) {
+      wishlistBgRemoveProgressStatus.textContent = statusText;
+    }
+  };
+
+  const hideWishlistBgProgress = () => {
+    if (wishlistBgRemoveProgressContainer) wishlistBgRemoveProgressContainer.style.display = 'none';
+    if (wishlistBgRemoveProgressPercent) wishlistBgRemoveProgressPercent.textContent = '0%';
+    if (wishlistBgRemoveProgressFill) wishlistBgRemoveProgressFill.style.width = '0%';
+  };
+
   const openAddWishlistModal = () => {
     clearWishlistModalMessage();
+    wishlistProcessedBlob = null;
+    wishlistOriginalImageSrc = null;
+    hideWishlistBgProgress();
     if (addWishlistForm) addWishlistForm.reset();
     if (wishlistImagePreview) wishlistImagePreview.src = '';
     if (wishlistImagePreviewContainer) wishlistImagePreviewContainer.style.display = 'none';
@@ -1883,6 +2149,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const closeAddWishlistModal = () => {
+    wishlistProcessedBlob = null;
+    wishlistOriginalImageSrc = null;
+    hideWishlistBgProgress();
     if (modalAddWishlist) modalAddWishlist.style.display = 'none';
     clearWishlistModalMessage();
     if (addWishlistForm) addWishlistForm.reset();
@@ -1901,14 +2170,183 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (wishlistImageInput) {
     wishlistImageInput.addEventListener('change', (e) => {
+      wishlistProcessedBlob = null;
+      wishlistOriginalImageSrc = null;
+      hideWishlistBgProgress();
+
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
-          if (wishlistImagePreview) wishlistImagePreview.src = event.target.result;
+          wishlistOriginalImageSrc = event.target.result;
+          if (wishlistImagePreview) wishlistImagePreview.src = wishlistOriginalImageSrc;
           if (wishlistImagePreviewContainer) wishlistImagePreviewContainer.style.display = 'flex';
         };
         reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  if (btnWishlistRemoveBg) {
+    btnWishlistRemoveBg.addEventListener('click', async () => {
+      if (!wishlistImagePreview || !wishlistImagePreview.src) return;
+
+      clearWishlistModalMessage();
+
+      const originalBtnText = btnWishlistRemoveBg.querySelector('span')
+        ? btnWishlistRemoveBg.querySelector('span').textContent
+        : t('btn_remove_bg');
+
+      btnWishlistRemoveBg.disabled = true;
+      if (btnWishlistRemoveBg.querySelector('span')) {
+        btnWishlistRemoveBg.querySelector('span').textContent = t('btn_removing_bg');
+      }
+
+      const imageSource = wishlistOriginalImageSrc || wishlistImagePreview.src;
+      updateWishlistBgProgress(5, t('bg_removing_progress'));
+
+      let currentSimulated = 5;
+      const progressInterval = setInterval(() => {
+        if (currentSimulated < 85) {
+          currentSimulated += Math.floor(Math.random() * 6) + 2;
+          if (currentSimulated > 85) currentSimulated = 85;
+          updateWishlistBgProgress(currentSimulated, t('bg_processing_image'));
+        }
+      }, 300);
+
+      try {
+        let responseBlob = null;
+
+        if (!isWasmSupported()) {
+          console.warn("WebAssembly não é suportado neste navegador.");
+          showWishlistModalMessage(t('bg_wasm_not_supported'), 'error');
+        } else {
+          try {
+            const isIOS = isIOSDevice();
+            const sourceForImgly = isIOS ? await scaleImageIfNeeded(imageSource, 1024) : imageSource;
+
+            const imglyModule = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/+esm');
+            const removeBackground = imglyModule.default || imglyModule.removeBackground;
+
+            if (typeof removeBackground === 'function') {
+              const imglyConfig = {
+                model: isIOS ? 'isnet_quint8' : 'isnet_fp16',
+                device: 'cpu',
+                progress: (key, current, total) => {
+                  if (total && total > 0) {
+                    const p = Math.round((current / total) * 100);
+                    const statusMsg = key.includes('fetch') ? t('bg_downloading_model') : t('bg_processing_image');
+                    updateWishlistBgProgress(p, statusMsg);
+                  }
+                }
+              };
+
+              responseBlob = await removeBackground(sourceForImgly, imglyConfig);
+            }
+          } catch (imglyErr) {
+            console.error("Falha ao executar @imgly/background-removal na wishlist:", imglyErr);
+            showWishlistModalMessage(t('bg_removal_error_details', { details: imglyErr.message || 'Erro no Web Worker/WASM' }), 'error');
+          }
+        }
+
+        clearInterval(progressInterval);
+
+        if (responseBlob) {
+          updateWishlistBgProgress(90, t('bg_processing_image'));
+          const compositedBlob = await applyAlphaMaskFromBlob(imageSource, responseBlob);
+          wishlistProcessedBlob = compositedBlob;
+          const newUrl = URL.createObjectURL(compositedBlob);
+          wishlistImagePreview.src = newUrl;
+          updateWishlistBgProgress(100, t('bg_removed_success'));
+          setTimeout(hideWishlistBgProgress, 1000);
+          showWishlistModalMessage(t('bg_removed_success'), 'success');
+        } else {
+          hideWishlistBgProgress();
+          wishlistImagePreview.src = imageSource;
+          showWishlistModalMessage(t('bg_removal_fallback'), 'info');
+        }
+      } catch (err) {
+        clearInterval(progressInterval);
+        hideWishlistBgProgress();
+        console.warn('Erro na remoção de fundo wishlist:', err);
+        if (wishlistImagePreview && imageSource) {
+          wishlistImagePreview.src = imageSource;
+        }
+        showWishlistModalMessage(t('bg_removal_fallback'), 'info');
+      } finally {
+        btnWishlistRemoveBg.disabled = false;
+        if (btnWishlistRemoveBg.querySelector('span')) {
+          btnWishlistRemoveBg.querySelector('span').textContent = originalBtnText;
+        }
+      }
+    });
+  }
+
+  if (btnWishlistInvertSelection) {
+    btnWishlistInvertSelection.addEventListener('click', () => {
+      if (!wishlistImagePreview || !wishlistImagePreview.src || !wishlistOriginalImageSrc) {
+        showWishlistModalMessage('Carregue uma imagem antes de inverter a seleção.', 'error');
+        return;
+      }
+
+      const origImg = new Image();
+      origImg.crossOrigin = 'Anonymous';
+      origImg.onload = () => {
+        const currentImg = new Image();
+        currentImg.crossOrigin = 'Anonymous';
+        currentImg.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = origImg.width;
+          canvas.height = origImg.height;
+          const ctx = canvas.getContext('2d');
+
+          ctx.drawImage(currentImg, 0, 0, canvas.width, canvas.height);
+          const currentData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+          const origCanvas = document.createElement('canvas');
+          origCanvas.width = origImg.width;
+          origCanvas.height = origImg.height;
+          const origCtx = origCanvas.getContext('2d');
+          origCtx.drawImage(origImg, 0, 0);
+          const origData = origCtx.getImageData(0, 0, origCanvas.width, origCanvas.height);
+
+          const cPixels = currentData.data;
+          const oPixels = origData.data;
+
+          for (let i = 0; i < cPixels.length; i += 4) {
+            if (cPixels[i + 3] < 128) {
+              cPixels[i] = oPixels[i];
+              cPixels[i + 1] = oPixels[i + 1];
+              cPixels[i + 2] = oPixels[i + 2];
+              cPixels[i + 3] = 255;
+            } else {
+              cPixels[i + 3] = 0;
+            }
+          }
+
+          ctx.putImageData(currentData, 0, 0);
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              wishlistProcessedBlob = blob;
+              const newUrl = URL.createObjectURL(blob);
+              wishlistImagePreview.src = newUrl;
+              showWishlistModalMessage('Seleção invertida com sucesso!', 'success');
+            }
+          }, 'image/png');
+        };
+        currentImg.src = wishlistImagePreview.src;
+      };
+      origImg.src = wishlistOriginalImageSrc;
+    });
+  }
+
+  if (btnWishlistUndoOriginal) {
+    btnWishlistUndoOriginal.addEventListener('click', () => {
+      if (wishlistOriginalImageSrc) {
+        wishlistProcessedBlob = null;
+        wishlistImagePreview.src = wishlistOriginalImageSrc;
+        showWishlistModalMessage('Foto original restaurada com sucesso!', 'success');
       }
     });
   }
@@ -1934,13 +2372,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       let publicImageUrl = null;
       const imageFile = wishlistImageInput.files[0];
-      if (imageFile) {
+      if (wishlistProcessedBlob || imageFile) {
         try {
-          const fileName = `wishlist_${currentUser.id}_${Date.now()}.${imageFile.name.split('.').pop()}`;
+          const fileToUpload = wishlistProcessedBlob || imageFile;
+          const fileExt = wishlistProcessedBlob ? 'png' : (imageFile ? imageFile.name.split('.').pop() : 'png');
+          const fileName = `wishlist_${currentUser.id}_${Date.now()}.${fileExt}`;
+
           const { error: storageErr } = await supabaseClient
             .storage
             .from('roupas')
-            .upload(fileName, imageFile);
+            .upload(fileName, fileToUpload);
 
           if (!storageErr) {
             const { data: urlData } = supabaseClient.storage.from('roupas').getPublicUrl(fileName);
@@ -2047,6 +2488,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             ${item.observacoes ? `<p class="wishlist-notes">${item.observacoes}</p>` : ''}
             <div class="wishlist-actions">
               ${item.link_compra ? `<a href="${item.link_compra}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm"><i data-lucide="external-link" class="icon-sm"></i> Store</a>` : ''}
+              ${item.imagem_url ? `
+                <button class="btn btn-secondary btn-sm btn-compare-wishlist-item" data-id="${item.id}" title="${t('btn_compare_on_board')}">
+                  <i data-lucide="sparkles" class="icon-sm"></i> ${t('btn_compare_on_board')}
+                </button>
+              ` : ''}
               ${!isAcquired ? `
                 <button class="btn btn-secondary btn-sm btn-mark-acquired" data-id="${item.id}">
                   <i data-lucide="check" class="icon-sm"></i> ${t('btn_mark_acquired')}
@@ -2061,6 +2507,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
           </div>
         `;
+
+        const btnCompare = cardEl.querySelector('.btn-compare-wishlist-item');
+        if (btnCompare) {
+          btnCompare.addEventListener('click', () => {
+            compareWishlistItemOnBoard(item);
+          });
+        }
 
         const btnMark = cardEl.querySelector('.btn-mark-acquired');
         if (btnMark) {
@@ -2124,50 +2577,136 @@ document.addEventListener('DOMContentLoaded', async () => {
   let canvasItems = [];
   let selectedItemId = null;
   let nextZIndex = 1;
+  let currentBoardPaletteTab = 'wardrobe';
+
+  const paletteTabWardrobe = document.getElementById('palette-tab-wardrobe');
+  const paletteTabWishlist = document.getElementById('palette-tab-wishlist');
+  const btnCompareWishlistBoard = document.getElementById('btn-compare-wishlist-board');
+
+  if (paletteTabWardrobe) {
+    paletteTabWardrobe.addEventListener('click', () => {
+      currentBoardPaletteTab = 'wardrobe';
+      paletteTabWardrobe.classList.add('active');
+      if (paletteTabWishlist) paletteTabWishlist.classList.remove('active');
+      loadBoardPaletteItems('wardrobe');
+    });
+  }
+
+  if (paletteTabWishlist) {
+    paletteTabWishlist.addEventListener('click', () => {
+      currentBoardPaletteTab = 'wishlist';
+      paletteTabWishlist.classList.add('active');
+      if (paletteTabWardrobe) paletteTabWardrobe.classList.remove('active');
+      loadBoardPaletteItems('wishlist');
+    });
+  }
+
+  if (btnCompareWishlistBoard) {
+    btnCompareWishlistBoard.addEventListener('click', () => {
+      currentBoardPaletteTab = 'wishlist';
+      if (paletteTabWishlist) paletteTabWishlist.classList.add('active');
+      if (paletteTabWardrobe) paletteTabWardrobe.classList.remove('active');
+      showSection('board');
+      loadBoardPaletteItems('wishlist');
+    });
+  }
 
   const initBoardView = async () => {
-    await loadBoardPaletteItems();
+    await loadBoardPaletteItems(currentBoardPaletteTab);
     await loadSavedCombinations();
   };
 
-  const loadBoardPaletteItems = async () => {
+  const loadBoardPaletteItems = async (tab = currentBoardPaletteTab) => {
     if (!supabaseClient || !currentUser || !boardItemsPalette) return;
 
     boardItemsPalette.innerHTML = '<p style="font-size:0.75rem; color: var(--text-muted); grid-column: span 2;">Carregando peças...</p>';
 
     try {
-      const { data: roupas, error } = await supabaseClient
-        .from('roupas')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .order('created_at', { ascending: false });
+      if (tab === 'wishlist') {
+        const { data: wishlist, error } = await supabaseClient
+          .from('wishlist')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false });
 
-      if (error || !roupas || roupas.length === 0) {
-        boardItemsPalette.innerHTML = `<p style="font-size:0.75rem; color: var(--text-muted); grid-column: span 2;">${t('empty_wardrobe_title')}</p>`;
-        return;
-      }
+        if (error || !wishlist || wishlist.length === 0) {
+          boardItemsPalette.innerHTML = `<p style="font-size:0.75rem; color: var(--text-muted); grid-column: span 2;">${t('empty_wishlist_palette')}</p>`;
+          return;
+        }
 
-      boardItemsPalette.innerHTML = '';
-      roupas.forEach(piece => {
-        if (!piece.imagem_url) return;
+        const imageItems = wishlist.filter(w => w.imagem_url);
 
-        const paletteItem = document.createElement('div');
-        paletteItem.className = 'board-palette-item';
-        paletteItem.title = piece.nome;
-        paletteItem.innerHTML = `
-          <img src="${piece.imagem_url}" alt="${piece.nome}" class="board-palette-img">
-          <span class="board-palette-name">${piece.nome}</span>
-        `;
+        if (imageItems.length === 0) {
+          boardItemsPalette.innerHTML = `<p style="font-size:0.75rem; color: var(--text-muted); grid-column: span 2;">${t('empty_wishlist_palette')}</p>`;
+          return;
+        }
 
-        paletteItem.addEventListener('click', () => {
-          addItemToCanvas(piece);
+        boardItemsPalette.innerHTML = '';
+        imageItems.forEach(item => {
+          const paletteItem = document.createElement('div');
+          paletteItem.className = 'board-palette-item board-palette-wishlist-item';
+          paletteItem.title = `${item.nome} (${t('badge_wishlist')})`;
+          paletteItem.innerHTML = `
+            <span class="board-palette-badge">${t('badge_wishlist')}</span>
+            <img src="${item.imagem_url}" alt="${item.nome}" class="board-palette-img">
+            <span class="board-palette-name">${item.nome}</span>
+          `;
+
+          paletteItem.addEventListener('click', () => {
+            addItemToCanvas(item);
+          });
+
+          boardItemsPalette.appendChild(paletteItem);
         });
+      } else {
+        const { data: roupas, error } = await supabaseClient
+          .from('roupas')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false });
 
-        boardItemsPalette.appendChild(paletteItem);
-      });
+        if (error || !roupas || roupas.length === 0) {
+          boardItemsPalette.innerHTML = `<p style="font-size:0.75rem; color: var(--text-muted); grid-column: span 2;">${t('empty_wardrobe_title')}</p>`;
+          return;
+        }
+
+        boardItemsPalette.innerHTML = '';
+        roupas.forEach(piece => {
+          if (!piece.imagem_url) return;
+
+          const paletteItem = document.createElement('div');
+          paletteItem.className = 'board-palette-item';
+          paletteItem.title = piece.nome;
+          paletteItem.innerHTML = `
+            <img src="${piece.imagem_url}" alt="${piece.nome}" class="board-palette-img">
+            <span class="board-palette-name">${piece.nome}</span>
+          `;
+
+          paletteItem.addEventListener('click', () => {
+            addItemToCanvas(piece);
+          });
+
+          boardItemsPalette.appendChild(paletteItem);
+        });
+      }
     } catch (err) {
       console.error('Erro ao carregar palette do board:', err);
     }
+  };
+
+  const compareWishlistItemOnBoard = (item) => {
+    if (!item || !item.imagem_url) {
+      alert(t('no_image'));
+      return;
+    }
+
+    showSection('board');
+    currentBoardPaletteTab = 'wishlist';
+    if (paletteTabWishlist) paletteTabWishlist.classList.add('active');
+    if (paletteTabWardrobe) paletteTabWardrobe.classList.remove('active');
+    loadBoardPaletteItems('wishlist');
+
+    addItemToCanvas(item);
   };
 
   const updatePlaceholderVisibility = () => {
