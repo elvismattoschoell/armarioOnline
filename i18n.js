@@ -175,6 +175,8 @@ export const translations = {
     bg_wasm_not_supported: "WebAssembly não suportado neste navegador. Utilizando método alternativo...",
     bg_removal_fallback: "A IA falhou, use o recorte manual",
     btn_choose_photo: "Escolher Foto",
+    btn_take_photo: "Tirar Foto",
+    btn_choose_gallery: "Galeria",
 
     // Coleções (Collections)
     collections_title: "Minhas Coleções",
@@ -464,6 +466,8 @@ export const translations = {
     bg_wasm_not_supported: "WebAssembly is not supported in this browser. Using alternative method...",
     bg_removal_fallback: "AI failed, use manual cropping",
     btn_choose_photo: "Choose Photo",
+    btn_take_photo: "Take Photo",
+    btn_choose_gallery: "Gallery",
 
     // Coleções (Collections)
     collections_title: "My Collections",
@@ -753,6 +757,8 @@ export const translations = {
     bg_wasm_not_supported: "WebAssembly не поддерживается в этом браузере. Используется альтернативный метод...",
     bg_removal_fallback: "ИИ не справился, используйте ручную обрезку",
     btn_choose_photo: "Выбрать фото",
+    btn_take_photo: "Сделать фото",
+    btn_choose_gallery: "Галерея",
 
     // Coleções (Collections)
     collections_title: "Мои коллекции",

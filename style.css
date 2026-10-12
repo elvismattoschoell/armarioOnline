@@ -375,6 +375,17 @@ body {
   color: var(--text-primary);
 }
 
+.upload-options-group {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.upload-options-group .custom-file-upload-btn {
+  flex: 1;
+  width: 100%;
+}
+
 .custom-file-upload-btn {
   display: inline-flex;
   align-items: center;

@@ -65,7 +65,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnClosePieceModal = document.getElementById('btn-close-piece-modal');
   const btnCancelPiece = document.getElementById('btn-cancel-piece');
   const addPieceForm = document.getElementById('add-piece-form');
-  const pieceImageInput = document.getElementById('piece-image');
+  const pieceImageCameraInput = document.getElementById('piece-image-camera');
+  const pieceImageGalleryInput = document.getElementById('piece-image-gallery');
   const pieceImagePreview = document.getElementById('piece-image-preview');
   const imagePreviewContainer = document.getElementById('image-preview-container');
   const pieceNomeInput = document.getElementById('piece-nome');
@@ -126,7 +127,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnCloseWishlistModal = document.getElementById('btn-close-wishlist-modal');
   const btnCancelWishlist = document.getElementById('btn-cancel-wishlist');
   const addWishlistForm = document.getElementById('add-wishlist-form');
-  const wishlistImageInput = document.getElementById('wishlist-image');
+  const wishlistImageCameraInput = document.getElementById('wishlist-image-camera');
+  const wishlistImageGalleryInput = document.getElementById('wishlist-image-gallery');
   const wishlistImagePreview = document.getElementById('wishlist-image-preview');
   const wishlistImagePreviewContainer = document.getElementById('wishlist-image-preview-container');
   const wishlistNomeInput = document.getElementById('wishlist-nome');
@@ -1017,30 +1019,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (pieceImagePreview) pieceImagePreview.style.display = 'block';
   };
 
-  if (pieceImageInput) {
-    pieceImageInput.addEventListener('change', (e) => {
-      closeCanvasEditor();
-      processedBlob = null;
-      originalImageSrc = null;
+  const handlePieceImageChange = (file) => {
+    closeCanvasEditor();
+    processedBlob = null;
+    originalImageSrc = null;
 
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          originalImageSrc = event.target.result;
-          if (pieceImagePreview) pieceImagePreview.src = originalImageSrc;
-          if (imagePreviewContainer) imagePreviewContainer.style.display = 'flex';
-          if (imageProcessingActions) imageProcessingActions.style.display = 'flex';
-          if (cropCanvasControls) cropCanvasControls.style.display = 'none';
-          if (cropCanvasEditor) cropCanvasEditor.style.display = 'none';
-          refreshIcons();
-        };
-        reader.readAsDataURL(file);
-      } else {
-        if (pieceImagePreview) pieceImagePreview.src = '';
-        if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
-      }
-    });
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        originalImageSrc = event.target.result;
+        if (pieceImagePreview) pieceImagePreview.src = originalImageSrc;
+        if (imagePreviewContainer) imagePreviewContainer.style.display = 'flex';
+        if (imageProcessingActions) imageProcessingActions.style.display = 'flex';
+        if (cropCanvasControls) cropCanvasControls.style.display = 'none';
+        if (cropCanvasEditor) cropCanvasEditor.style.display = 'none';
+        refreshIcons();
+      };
+      reader.readAsDataURL(file);
+    } else {
+      if (pieceImagePreview) pieceImagePreview.src = '';
+      if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
+    }
+  };
+
+  if (pieceImageCameraInput) {
+    pieceImageCameraInput.addEventListener('change', (e) => handlePieceImageChange(e.target.files[0]));
+  }
+  if (pieceImageGalleryInput) {
+    pieceImageGalleryInput.addEventListener('change', (e) => handlePieceImageChange(e.target.files[0]));
   }
 
   const applyAlphaMaskFromBlob = (origSrc, maskBlob) => {
@@ -1373,8 +1379,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     closeCanvasEditor();
     processedBlob = null;
     originalImageSrc = null;
-    if (pieceImageInput) pieceImageInput.removeAttribute('capture');
     if (addPieceForm) addPieceForm.reset();
+    if (pieceImageCameraInput) pieceImageCameraInput.value = '';
+    if (pieceImageGalleryInput) pieceImageGalleryInput.value = '';
     if (pieceImagePreview) pieceImagePreview.src = '';
     if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
     if (modalAddPiece) modalAddPiece.style.display = 'flex';
@@ -1387,6 +1394,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (modalAddPiece) modalAddPiece.style.display = 'none';
     clearPieceModalMessage();
     if (addPieceForm) addPieceForm.reset();
+    if (pieceImageCameraInput) pieceImageCameraInput.value = '';
+    if (pieceImageGalleryInput) pieceImageGalleryInput.value = '';
     if (pieceImagePreview) pieceImagePreview.src = '';
     if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
   };
@@ -1946,7 +1955,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       let publicImageUrl = null;
 
-      const imageFile = pieceImageInput.files[0];
+      const imageFile = (pieceImageCameraInput && pieceImageCameraInput.files[0]) || (pieceImageGalleryInput && pieceImageGalleryInput.files[0]);
       if (processedBlob || imageFile) {
         try {
           const fileToUpload = processedBlob || imageFile;
@@ -2332,8 +2341,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     wishlistProcessedBlob = null;
     wishlistOriginalImageSrc = null;
     hideWishlistBgProgress();
-    if (wishlistImageInput) wishlistImageInput.removeAttribute('capture');
     if (addWishlistForm) addWishlistForm.reset();
+    if (wishlistImageCameraInput) wishlistImageCameraInput.value = '';
+    if (wishlistImageGalleryInput) wishlistImageGalleryInput.value = '';
     if (wishlistImagePreview) wishlistImagePreview.src = '';
     if (wishlistImagePreviewContainer) wishlistImagePreviewContainer.style.display = 'none';
     if (modalAddWishlist) modalAddWishlist.style.display = 'flex';
@@ -2346,6 +2356,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (modalAddWishlist) modalAddWishlist.style.display = 'none';
     clearWishlistModalMessage();
     if (addWishlistForm) addWishlistForm.reset();
+    if (wishlistImageCameraInput) wishlistImageCameraInput.value = '';
+    if (wishlistImageGalleryInput) wishlistImageGalleryInput.value = '';
   };
 
   if (btnCloseWishlistModal) btnCloseWishlistModal.addEventListener('click', closeAddWishlistModal);
@@ -2359,23 +2371,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  if (wishlistImageInput) {
-    wishlistImageInput.addEventListener('change', (e) => {
-      wishlistProcessedBlob = null;
-      wishlistOriginalImageSrc = null;
-      hideWishlistBgProgress();
+  const handleWishlistImageChange = (file) => {
+    wishlistProcessedBlob = null;
+    wishlistOriginalImageSrc = null;
+    hideWishlistBgProgress();
 
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          wishlistOriginalImageSrc = event.target.result;
-          if (wishlistImagePreview) wishlistImagePreview.src = wishlistOriginalImageSrc;
-          if (wishlistImagePreviewContainer) wishlistImagePreviewContainer.style.display = 'flex';
-        };
-        reader.readAsDataURL(file);
-      }
-    });
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        wishlistOriginalImageSrc = event.target.result;
+        if (wishlistImagePreview) wishlistImagePreview.src = wishlistOriginalImageSrc;
+        if (wishlistImagePreviewContainer) wishlistImagePreviewContainer.style.display = 'flex';
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  if (wishlistImageCameraInput) {
+    wishlistImageCameraInput.addEventListener('change', (e) => handleWishlistImageChange(e.target.files[0]));
+  }
+  if (wishlistImageGalleryInput) {
+    wishlistImageGalleryInput.addEventListener('change', (e) => handleWishlistImageChange(e.target.files[0]));
   }
 
   if (btnWishlistRemoveBg) {
@@ -2562,7 +2578,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnSubmitWishlist.querySelector('span').textContent = t('btn_saving_wishlist');
 
       let publicImageUrl = null;
-      const imageFile = wishlistImageInput.files[0];
+      const imageFile = (wishlistImageCameraInput && wishlistImageCameraInput.files[0]) || (wishlistImageGalleryInput && wishlistImageGalleryInput.files[0]);
       if (wishlistProcessedBlob || imageFile) {
         try {
           const fileToUpload = wishlistProcessedBlob || imageFile;
